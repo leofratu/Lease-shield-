@@ -47,45 +47,69 @@ if not gemini_api_keys:
 app = Flask(__name__)
 CORS(app)
 
-# --- Initialize Firebase Admin SDK ---
-# Define potential paths
-render_secret_path = "/etc/secrets/firebase_key.json"
-local_dev_path = "/Users/leo/lease-shield-ai/backend/lease-shield-ai-firebase-admin-sdk.json"
-firebase_sdk_config = None
-project_id = None
-
+# --- Initialize Firebase Admin SDK (Handles Local and Deployed) ---
+db = None # Initialize db to None
 try:
-    if os.path.exists(render_secret_path):
-        print(f"Using Firebase key from Render secret file: {render_secret_path}")
-        cred = credentials.Certificate(render_secret_path)
-        # Try to parse the file to get project_id
-        with open(render_secret_path, 'r') as f:
-            firebase_sdk_config = json.load(f)
-            project_id = firebase_sdk_config.get('project_id')
-    elif os.path.exists(local_dev_path):
-        print(f"Using Firebase key from local dev path: {local_dev_path}")
-        cred = credentials.Certificate(local_dev_path)
-        # Try to parse the file to get project_id
-        with open(local_dev_path, 'r') as f:
-            firebase_sdk_config = json.load(f)
-            project_id = firebase_sdk_config.get('project_id')
+    firebase_sdk_json_str = os.environ.get('FIREBASE_ADMIN_SDK_JSON_CONTENT')
+    
+    if firebase_sdk_json_str:
+        # Deployed on Render (or env var set manually using JSON content)
+        print("Using Firebase key from environment variable.")
+        firebase_sdk_config = json.loads(firebase_sdk_json_str)
+        cred = credentials.Certificate(firebase_sdk_config)
+        project_id = firebase_sdk_config.get('project_id')
     else:
-        raise FileNotFoundError("Firebase Admin SDK JSON key file not found at expected paths.")
+        # Running Locally - Check for Render Secret File path OR local path
+        render_secret_path = '/etc/secrets/firebase_key.json'
+        local_key_path = 'lease-shield-ai-firebase-admin-sdk.json' # Assuming file is in same dir as app.py
+
+        if os.path.exists(render_secret_path):
+             print(f"Using Firebase key from Render secret file: {render_secret_path}")
+             cred = credentials.Certificate(render_secret_path)
+             # We need project_id for storage bucket, get it from creds
+             # Note: This requires the service account to have roles/iam.serviceAccountViewer or similar
+             # If this fails, you might need to parse the JSON file manually here too
+             try:
+                 project_id = cred.project_id 
+             except Exception as cred_err:
+                  print(f"Warning: Could not get project_id from credential object: {cred_err}")
+                  # Attempt to parse the file to get project_id as fallback
+                  try:
+                       with open(render_secret_path, 'r') as f:
+                           key_data = json.load(f)
+                       project_id = key_data.get('project_id')
+                  except Exception as parse_err:
+                       print(f"Error parsing secret file for project_id: {parse_err}")
+                       project_id = None 
+        elif os.path.exists(local_key_path):
+            print(f"Using Firebase key from local file: {local_key_path}")
+            cred = credentials.Certificate(local_key_path)
+            # Attempt to parse the file to get project_id
+            try:
+                 with open(local_key_path, 'r') as f:
+                     key_data = json.load(f)
+                 project_id = key_data.get('project_id')
+            except Exception as parse_err:
+                 print(f"Error parsing local key file for project_id: {parse_err}")
+                 project_id = None 
+        else:
+            raise FileNotFoundError(f"Firebase key file not found at {render_secret_path} or {local_key_path}")
 
     if not project_id:
-        raise ValueError("Could not determine Firebase Project ID from service account file.")
+         raise ValueError("Could not determine Firebase project ID from credentials.")
 
     firebase_admin.initialize_app(cred, {
-        'storageBucket': f"{project_id}.appspot.com"
+        'storageBucket': project_id + '.appspot.com'
     })
     print("Firebase Admin SDK initialized successfully.")
+    db = firestore.client() # Assign db client ONLY on success
 
+except FileNotFoundError as e:
+    print(f"CRITICAL ERROR: Firebase Admin SDK JSON key file not found. {e}")
+except ValueError as e:
+     print(f"CRITICAL ERROR: Invalid Firebase Admin SDK JSON content or missing project_id. {e}")
 except Exception as e:
     print(f"CRITICAL ERROR: Failed to initialize Firebase Admin SDK: {e}")
-    # Exit or handle gracefully
-
-db = firestore.client()
-# --- End Firebase Admin Init ---
 
 # --- Remove global Gemini Init --- 
 # genai.configure(api_key=os.environ.get('GEMINI_API_KEY')) # REMOVED
@@ -292,6 +316,9 @@ def ping():
 # --- Maxelpay Checkout Route ---
 @app.route('/api/payid/create-checkout-session', methods=['POST']) # Keep route name consistent with frontend for now
 def create_checkout_session():
+    if db is None:
+        print("Error: Firestore database client not initialized.")
+        return jsonify({'error': 'Server configuration error: Database unavailable.'}), 500
     # --- Authorization --- 
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
@@ -427,6 +454,10 @@ def create_checkout_session():
 # --- Webhook Route (Placeholder) ---
 @app.route('/api/maxelpay/webhook', methods=['POST'])
 def maxelpay_webhook():
+    if db is None:
+        print("Webhook Error: Firestore database client not initialized.")
+        # Still return 200 to Maxelpay if possible, but log the internal error
+        return jsonify({'status': 'received (internal DB error)'}), 200 
     # 1. --- IMPORTANT: Verify Webhook Signature ---
     # Replace this with actual signature verification logic from Maxelpay docs!
     # This usually involves getting a signature from request headers,
@@ -516,6 +547,9 @@ def maxelpay_webhook():
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_document():
+    if db is None:
+        print("Error: Firestore database client not initialized.")
+        return jsonify({'error': 'Server configuration error: Database unavailable.'}), 500
     # --- Authorization & Subscription Check --- 
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
@@ -663,6 +697,9 @@ def analyze_document():
 # --- Add DELETE Endpoint --- 
 @app.route('/api/leases/<string:lease_id>', methods=['DELETE'])
 def delete_lease(lease_id):
+    if db is None:
+        print("Error: Firestore database client not initialized.")
+        return jsonify({'error': 'Server configuration error: Database unavailable.'}), 500
     # Check authorization
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
