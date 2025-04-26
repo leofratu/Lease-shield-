@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthState } from '../hooks/useAuthState';
 import {
   Box,
   Typography,
@@ -45,6 +46,7 @@ import {
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuthState();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -158,6 +160,16 @@ const LandingPage = () => {
     { feature: "Cost", traditional: "$200-500/hr", leaseShield: "Subscription" }
   ];
 
+  // --- Button Click Handler ---
+  const handleGetStartedClick = () => {
+      if (user) {
+          navigate('/analysis'); // Go to analysis if logged in
+      } else {
+          navigate('/register'); // Go to register if not logged in
+      }
+  };
+  // --- End Button Click Handler ---
+
   return (
     <Box sx={{ overflowX: 'hidden' }}>
       {/* Hero Section */}
@@ -202,7 +214,7 @@ const LandingPage = () => {
                   <Button
                     variant="contained"
                     size="large"
-                    onClick={() => navigate('/register')}
+                    onClick={handleGetStartedClick}
                     sx={{
                       bgcolor: 'white',
                       color: theme.palette.primary.main,
@@ -220,7 +232,7 @@ const LandingPage = () => {
                       },
                     }}
                   >
-                    Get Started Free
+                    {user ? 'Analyze New Lease' : 'Get Started Free'}
                   </Button>
                 </Stack>
                 <Box sx={{ mt: 4, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -553,7 +565,7 @@ const LandingPage = () => {
               <Button
                 variant="contained"
                 size="large"
-                onClick={() => navigate('/register')}
+                onClick={handleGetStartedClick}
                 sx={{
                   bgcolor: 'white',
                   color: 'primary.main',
@@ -570,7 +582,7 @@ const LandingPage = () => {
                   },
                 }}
               >
-                Get Started For Free
+                {user ? 'Analyze New Lease' : 'Get Started Free'}
               </Button>
            </Paper>
          </Container>
