@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { 
   Typography, 
   Box, 
@@ -38,7 +38,8 @@ import {
   HelpOutline as HelpIcon,
   Check as CheckIcon,
   Star as StarIcon,
-  Upgrade as UpgradeIcon
+  Upgrade as UpgradeIcon,
+  Article as ArticleIcon
 } from '@mui/icons-material';
 import { collection, query, where, orderBy, getDocs, Timestamp, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
@@ -330,7 +331,28 @@ const Dashboard = ({ showSnackbar }) => {
         </Grid>
       </Grid>
 
-      {/* Lease Analyses Section Title */}
+      <Paper variant="outlined" sx={{ p: 2, mb: 4, borderRadius: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h6" component="h2" gutterBottom>
+              From the Blog
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Tips on understanding leases, avoiding scams, and more.
+            </Typography>
+          </Box>
+          <Button 
+            variant="contained"
+            component={RouterLink} 
+            to="/blog"
+            startIcon={<ArticleIcon />}
+            size="small"
+          >
+            Read Blog
+          </Button>
+        </Box>
+      </Paper>
+
       <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
         My Lease Analyses
       </Typography>
