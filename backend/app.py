@@ -98,7 +98,7 @@ try:
     if not project_id:
          raise ValueError("Could not determine Firebase project ID from credentials.")
 
-    firebase_admin.initialize_app(cred, {
+firebase_admin.initialize_app(cred, {
         'storageBucket': project_id + '.appspot.com'
     })
     print("Firebase Admin SDK initialized successfully.")
@@ -132,8 +132,8 @@ def extract_pdf_text(file_stream):
     text = ""
     try:
         reader = PyPDF2.PdfReader(file_stream)
-        for page_num in range(len(reader.pages)):
-            page = reader.pages[page_num]
+            for page_num in range(len(reader.pages)):
+                page = reader.pages[page_num]
             text += page.extract_text() + "\\n"
         return text
     except Exception as e:
@@ -558,7 +558,7 @@ def analyze_document():
     user_id = verify_token(token)
     if not user_id:
         return jsonify({'error': 'Invalid token'}), 401
-
+    
     user_profile = get_or_create_user_profile(user_id)
     if not user_profile:
          # Handle case where profile creation failed
@@ -634,7 +634,7 @@ def analyze_document():
         if not analysis_result_text:
             # Specific error if analysis itself failed
             return jsonify({'error': 'AI analysis failed. Please try again later.'}), 500
-
+        
         # Parse the JSON response from Gemini
         try:
             # Gemini might return markdown ```json ... ```
@@ -679,14 +679,14 @@ def analyze_document():
             print(f"Firestore saving error: {db_error}")
             # Decide if we should fail the request or just return the analysis without saving
             new_lease_id = None # Indicate saving failed
-
+        
         # Return analysis result (and optionally the new lease ID)
         return jsonify({
             'success': True,
             'leaseId': new_lease_id, # Return the ID of the *newly created* doc
             'analysis': result_data
         })
-
+    
     except Exception as e:
         print(f"Analysis endpoint error: {e}")
         # Attempt to save error state if possible (might fail if analysis failed early)

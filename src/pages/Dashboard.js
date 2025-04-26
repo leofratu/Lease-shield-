@@ -330,6 +330,7 @@ const Dashboard = ({ showSnackbar }) => {
         </Grid>
       </Grid>
 
+      {/* Lease Analyses Section Title */}
       <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
         My Lease Analyses
       </Typography>

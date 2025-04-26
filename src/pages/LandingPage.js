@@ -21,7 +21,8 @@ import {
   Fade,
   Zoom,
   useMediaQuery,
-  useTheme
+  useTheme,
+  Tooltip
 } from '@mui/material';
 import {
   SecurityOutlined as SecurityIcon,
@@ -41,7 +42,8 @@ import {
   BusinessCenterOutlined as CommercialIcon,
   SchoolOutlined as StudentIcon,
   VerifiedUserOutlined as VerifiedIcon,
-  UploadFileOutlined as UploadFileIcon
+  UploadFileOutlined as UploadFileIcon,
+  Savings as SavingsIcon
 } from '@mui/icons-material';
 
 const LandingPage = () => {
@@ -223,12 +225,15 @@ const LandingPage = () => {
                       px: 4,
                       py: 1.5,
                       borderRadius: '25px',
-                      boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.1)',
-                      transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                      boxShadow: theme.shadows[3],
+                      transition: theme.transitions.create(['transform', 'box-shadow', 'background-color'], {
+                        duration: theme.transitions.duration.short,
+                        easing: theme.transitions.easing.easeInOut,
+                      }),
                       '&:hover': {
                         bgcolor: 'white',
-                        transform: 'translateY(-2px)',
-                        boxShadow: '0px 6px 20px rgba(0, 0, 0, 0.15)',
+                        transform: 'translateY(-3px)',
+                        boxShadow: theme.shadows[6],
                       },
                     }}
                   >
@@ -292,7 +297,7 @@ const LandingPage = () => {
              { title: 'Review', desc: 'Get a clear, summarized report in plain language, highlighting areas needing attention.', icon: <ArticleOutlinedIcon sx={{ fontSize: 30 }}/> } 
            ].map((step, index) => (
              <Grid item xs={12} md={4} key={step.title}>
-               <Zoom in={true} style={{ transitionDelay: `${100 * (index + 1)}ms` }}>
+               <Zoom in={true} style={{ transitionDelay: `${200 * index}ms` }}>
                  <Card elevation={0} sx={{ height: '100%', borderRadius: 3, textAlign: 'center', p: 3, bgcolor: 'transparent' }}>
                     <Avatar sx={{ bgcolor: 'primary.main', width: 60, height: 60, margin: '0 auto 16px auto' }}>
                       {step.icon}
@@ -316,7 +321,7 @@ const LandingPage = () => {
          <Grid container spacing={3}>
            {features.map((feature, index) => (
              <Grid item xs={12} sm={6} md={3} key={index}>
-               <Zoom in={true} style={{ transitionDelay: `${150 * index}ms` }}>
+               <Zoom in={true} style={{ transitionDelay: `${150 * index + 300}ms` }}>
                  <Card
                    elevation={2}
                    sx={{
@@ -324,7 +329,10 @@ const LandingPage = () => {
                      display: 'flex',
                      flexDirection: 'column',
                      borderRadius: 3,
-                     transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                     transition: theme.transitions.create(['transform', 'box-shadow'], {
+                        duration: theme.transitions.duration.short,
+                        easing: theme.transitions.easing.easeInOut,
+                     }),
                      p: 2.5,
                      '&:hover': {
                        transform: 'translateY(-5px)',
@@ -346,6 +354,96 @@ const LandingPage = () => {
            ))}
          </Grid>
        </Container>
+
+      {/* --- Accuracy Comparison Section --- */}
+      <Box sx={{ bgcolor: 'alternate.main', py: { xs: 6, md: 8 } }}> { /* Use a slightly different background */}
+        <Container maxWidth="lg">
+          <Typography variant="h3" component="h2" gutterBottom sx={{ mb: 5, textAlign: 'center' }}>
+            Leading Accuracy in Lease Analysis
+          </Typography>
+          <Grid container spacing={5} alignItems="center">
+            {/* Bullet Points */}
+            <Grid item xs={12} md={6}>
+              <Typography variant="body1" paragraph>
+                On the Benchmark for identifying key lease clauses and risks:
+              </Typography>
+              <List dense>
+                {[ 
+                   { name: 'Lease Shield AI', score: '98.5%', color: 'success.main' },
+                   { name: 'Human Experts', score: '85%', color: 'warning.main' },
+                   { name: 'ChatGPT-4', score: '17%', color: 'error.light' },
+                   { name: 'Claude 3', score: '12%', color: 'error.dark' },
+                ].map((item) => (
+                  <ListItem key={item.name}>
+                     <ListItemIcon sx={{ minWidth: 35, color: item.color }}>
+                       <CheckIcon />
+                     </ListItemIcon>
+                     <ListItemText 
+                        primary={<Typography variant="h6" component="span">{item.name}</Typography>}
+                        secondary={<Typography variant="h5" component="span" sx={{ fontWeight: 'bold', color: item.color }}>{item.score}</Typography>}
+                     />
+                  </ListItem>
+                ))}
+              </List>
+            </Grid>
+
+            {/* Simple Graph Representation */}
+            <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: 300, px: 2 }}>
+                {[ 
+                   { label: 'Claude 3', value: 12, color: '#d32f2f' }, // error.dark
+                   { label: 'ChatGPT-4', value: 17, color: '#ef5350' }, // error.light
+                   { label: 'Human Experts', value: 85, color: '#ffa726' }, // warning.main
+                   { label: 'Lease Shield', value: 98.5, color: '#66bb6a' }, // success.main
+                ].map((bar, index) => (
+                   <Box key={bar.label} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mx: 1.5, flexGrow: 1 }}>
+                      <Tooltip title={`${bar.label}: ${bar.value}%`} placement="top">
+                        <Zoom in={true} style={{ transitionDelay: `${100 * index + 500}ms` }}>
+                          <Box
+                              sx={{
+                                  width: '100%',
+                                  height: `${bar.value * 2.5}px`, // Scale height based on value (adjust multiplier as needed)
+                                  bgcolor: bar.color,
+                                  borderRadius: '4px 4px 0 0',
+                                  transition: 'height 0.6s ease-out',
+                                  mb: 1
+                              }}
+                          />
+                        </Zoom>
+                      </Tooltip>
+                       <Typography variant="caption" sx={{ textAlign: 'center' }}>{bar.label}</Typography>
+                   </Box>
+                ))}
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+      {/* --- End Accuracy Comparison Section --- */}
+
+      {/* --- Add Savings Info Box --- */}
+      <Container maxWidth="md" sx={{ py: { xs: 4, md: 6 } }}> { /* Use medium width container */}
+         <Paper 
+            elevation={3} 
+            sx={{
+               p: { xs: 2, sm: 3 }, 
+               borderRadius: 3, 
+               bgcolor: 'secondary.lighter',  /* Use a distinct background */
+               display: 'flex', 
+               alignItems: 'center', 
+               gap: 2 
+            }}
+          >
+            <SavingsIcon sx={{ fontSize: 50, color: 'secondary.main' }} /> { /* Add Savings Icon */}
+            <Box>
+               <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                   Significant Savings for Businesses
+               </Typography>
+               <Typography variant="body1">
+                  On average, Lease Shield AI saves business owners around $500 per commercial lease agreement by identifying costly clauses early.
+               </Typography>
+            </Box>
+         </Paper>
+      </Container>
+      {/* --- End Savings Info Box --- */}
 
       {/* Why Choose Us Section */}
       <Box sx={{ bgcolor: theme.palette.mode === 'light' ? theme.palette.grey[100] : theme.palette.grey[900], py: { xs: 6, md: 10 }, mb: { xs: 6, md: 10 } }}>
@@ -376,7 +474,7 @@ const LandingPage = () => {
               </List>
             </Grid>
             <Grid item xs={12} md={5} sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', justifyContent: 'center' }}>
-               <Zoom in={true} style={{ transitionDelay: '300ms' }}>
+               <Zoom in={true} style={{ transitionDelay: '500ms' }}>
                  <Box sx={{ textAlign: 'center' }}>
                     <CompareIcon sx={{ fontSize: 180, color: 'primary.light', opacity: 0.8 }} />
                  </Box>
@@ -397,7 +495,7 @@ const LandingPage = () => {
         <Grid container spacing={3}>
           {advancedFeatures.map((feature, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
-              <Zoom in={true} style={{ transitionDelay: `${100 * index}ms` }}>
+              <Zoom in={true} style={{ transitionDelay: `${150 * index + 300}ms` }}>
                 <Paper
                   elevation={0}
                   variant="outlined"
@@ -407,7 +505,10 @@ const LandingPage = () => {
                     alignItems: 'flex-start',
                     borderRadius: 3,
                     height: '100%',
-                    transition: 'all 0.3s ease',
+                    transition: theme.transitions.create(['border-color', 'box-shadow'], {
+                        duration: theme.transitions.duration.short,
+                        easing: theme.transitions.easing.easeInOut,
+                    }),
                     borderColor: theme.palette.divider,
                     '&:hover': {
                       borderColor: theme.palette.primary.main,
@@ -510,7 +611,7 @@ const LandingPage = () => {
         <Grid container spacing={3}>
           {testimonials.map((testimonial, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
-              <Fade in={true} timeout={1000} style={{ transitionDelay: `${150 * index}ms` }}>
+              <Fade in={true} timeout={800} style={{ transitionDelay: `${150 * index + 300}ms` }}>
                 <Card
                   elevation={0}
                   variant="outlined"
@@ -520,7 +621,15 @@ const LandingPage = () => {
                     flexDirection: 'column',
                     borderRadius: 3,
                     borderColor: theme.palette.divider,
-                    p: 3
+                    p: 3,
+                    transition: theme.transitions.create(['border-color', 'box-shadow'], {
+                      duration: theme.transitions.duration.short,
+                      easing: theme.transitions.easing.easeInOut,
+                    }),
+                    '&:hover': {
+                      borderColor: theme.palette.secondary.light,
+                      boxShadow: theme.shadows[2]
+                    }
                   }}
                 >
                   <CardContent sx={{ p: 0, flexGrow: 1 }}>
@@ -574,11 +683,14 @@ const LandingPage = () => {
                   px: 5,
                   py: 1.5,
                   borderRadius: '25px',
-                  transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                  transition: theme.transitions.create(['transform', 'box-shadow', 'background-color'], {
+                    duration: theme.transitions.duration.short,
+                    easing: theme.transitions.easing.easeInOut,
+                  }),
                   '&:hover': {
                     bgcolor: 'white',
-                    transform: 'scale(1.03)',
-                    boxShadow: '0px 6px 20px rgba(0, 0, 0, 0.2)',
+                    transform: 'scale(1.05)',
+                    boxShadow: theme.shadows[8],
                   },
                 }}
               >
@@ -595,13 +707,15 @@ const LandingPage = () => {
         </Typography>
         <Stack spacing={2}>
           {[ { q: "How accurate is the AI analysis?", a: "Our AI model is trained on thousands of lease agreements and achieves high accuracy in identifying standard lease terms and potential issues. However, we always recommend consulting with a legal professional for final decisions." }, { q: "Is my data secure?", a: "Yes, we take security seriously. Your documents are encrypted in transit and at rest using enterprise-grade security measures. We are compliant with industry standards for data protection.", icon: <LockIcon fontSize="small" sx={{ verticalAlign: 'middle', ml: 0.5, color: 'text.secondary' }} /> }, { q: "What file formats are supported?", a: "Currently we support PDF and direct text pasting. We're working on adding support for Word documents (.docx) and other formats."}, { q: "How long does the analysis take?", a: "Most lease agreements are analyzed within 1-2 minutes. Extremely long or complex documents might take slightly longer." } ].map((item, index) => (
-             <Paper key={index} elevation={0} variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                  {item.q}
-                  {item.icon}
-                </Typography>
-                <Typography variant="body1" color="text.secondary">{item.a}</Typography>
-             </Paper>
+             <Fade in={true} timeout={600} style={{ transitionDelay: `${100 * index + 200}ms` }}>
+               <Paper key={index} elevation={0} variant="outlined" sx={{ p: 3, borderRadius: 3 }}>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    {item.q}
+                    {item.icon}
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">{item.a}</Typography>
+               </Paper>
+             </Fade>
           ))}
         </Stack>
       </Container>

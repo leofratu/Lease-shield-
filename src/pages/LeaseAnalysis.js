@@ -124,9 +124,9 @@ const LeaseAnalysis = ({ showSnackbar }) => {
           if (leaseData.analysis.score !== undefined) {
             setScore(leaseData.analysis.score);
           } else if (leaseData.analysis.risks) { // Fallback if score not present
-            const riskCount = leaseData.analysis.risks.length;
-            const calculatedScore = Math.max(0, 100 - (riskCount * 10)); 
-            setScore(calculatedScore);
+          const riskCount = leaseData.analysis.risks.length;
+          const calculatedScore = Math.max(0, 100 - (riskCount * 10));
+          setScore(calculatedScore);
           }
         }
       } else {
@@ -151,30 +151,26 @@ const LeaseAnalysis = ({ showSnackbar }) => {
     setTextContent(e.target.value);
   };
   
-  const handleAnalyzeText = async () => {
-    if (!textContent.trim()) {
-      displayError('Please enter lease text to analyze');
-      return;
-    }
-    
+  const runAnalysis = async (type, data) => {
+    // Common analysis logic combining text and file upload
     try {
       setAnalyzing(true);
-      setAnalysisProgress(10);
+      setAnalysisProgress(0); // Start at 0
       setError(null);
       setAnalysisResult(null);
       setScore(0);
-      displayInfo('Starting analysis...');
-      
-      // Simulate progress for analysis (optional, can be removed if backend is fast)
+      displayInfo('Starting analysis... This usually takes 1-2 minutes.');
+
+      let progress = 0;
+      // Simulate progress over ~70 seconds to reach 90%
+      // Update every 700ms, increment by 1 -> 100 steps * 700ms = 70 seconds
       const progressTimer = setInterval(() => {
-        setAnalysisProgress(prev => {
-          if (prev >= 90) {
+        progress += 1;
+        setAnalysisProgress(progress);
+        if (progress >= 90) {
             clearInterval(progressTimer);
-            return 90;
           }
-          return prev + 10;
-        });
-      }, 500);
+      }, 700);
       
       const user = auth.currentUser;
       if (!user) {
@@ -183,174 +179,101 @@ const LeaseAnalysis = ({ showSnackbar }) => {
       
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
       const token = await user.getIdToken();
+      let response;
       
-      const response = await fetch(`${apiUrl}/api/analyze`, {
+      if (type === 'text') {
+        response = await fetch(`${apiUrl}/api/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ text: textContent })
-      });
-      
-      clearInterval(progressTimer);
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ text: data })
+        });
+      } else if (type === 'file') {
+        const formData = new FormData();
+        formData.append('leaseFile', data);
+        response = await fetch(`${apiUrl}/api/analyze`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          body: formData
+        });
+      } else {
+        throw new Error('Invalid analysis type');
+      }
+
+      clearInterval(progressTimer); // Stop simulation once backend responds
+      setAnalysisProgress(95); // Indicate backend processing done
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Analysis failed with status: ' + response.status }));
-        // Check for specific upgrade required error
-        if (response.status === 402 && errorData.upgradeRequired) { 
-           setError(errorData.error); // Keep error state for potential Alert display
-           // Optionally show snackbar, but main action is prompting upgrade
-            if (showSnackbar) showSnackbar(errorData.error, 'warning');
-           // Redirect or show modal prompting upgrade
-           navigate('/pricing'); // Simple redirect for now
-           // Alternative: setModalOpen(true); 
+        const errorData = await response.json().catch(() => ({ error: `Analysis failed with status: ${response.status}` }));
+        if (response.status === 402 && errorData.upgradeRequired) {
+           setError(errorData.error);
+           if (showSnackbar) showSnackbar(errorData.error, 'warning');
+           navigate('/pricing');
         } else {
-          throw new Error(errorData.error || 'Failed to analyze lease text');
+          throw new Error(errorData.error || 'Failed to analyze lease');
         }
-        return; // Stop processing if upgrade needed or other error
+        setAnalysisProgress(0); // Reset on error
+        return; 
       }
       
       const result = await response.json();
-      
+
       if (!result.success || !result.analysis) {
          throw new Error(result.error || 'Analysis failed to return expected data.');
       }
       
       setAnalysisResult(result.analysis);
       
-      // Calculate score based on returned analysis
+      // Calculate score
       if (result.analysis.score !== undefined) {
         setScore(result.analysis.score);
-      } else if (result.analysis.risks) { // Fallback if score not present
+      } else if (result.analysis.risks) {
         const riskCount = result.analysis.risks.length;
         const calculatedScore = Math.max(0, 100 - (riskCount * 10));
         setScore(calculatedScore);
       }
       
-      setAnalysisProgress(100);
+      setAnalysisProgress(100); // Complete
 
-      // Navigate or notify about save status
       if (result.leaseId) {
         displaySuccess('Analysis complete and saved!');
         navigate(`/analysis/${result.leaseId}`);
       } else {
-         // Notify user that analysis is complete but wasn't saved to their dashboard
          console.warn("Analysis complete but no new lease ID returned from backend (save likely failed).");
          displayInfo('Analysis complete, but failed to save to your dashboard.');
-         // Keep the user on the current page to view results without navigating
       }
       
     } catch (err) {
-      console.error('Error analyzing text:', err);
-      displayError('Failed to analyze lease text: ' + err.message);
+      console.error('Analysis error:', err);
+      displayError(`Failed analysis: ${err.message}`);
       setAnalysisProgress(0); // Reset progress on error
     } finally {
       setAnalyzing(false);
     }
   };
   
-  const handleUpload = async () => {
+  const handleAnalyzeText = () => {
+    if (!textContent.trim()) {
+      displayError('Please enter lease text to analyze');
+      return;
+    }
+    runAnalysis('text', textContent);
+  };
+  
+  const handleUpload = () => {
     if (!file) {
       displayError('Please select a file to upload');
       return;
     }
-    
     if (file.type !== 'application/pdf' && file.type !== 'text/plain') {
       displayError('Please select a PDF or text file');
       return;
     }
-    
-    setAnalyzing(true);
-    setAnalysisProgress(10);
-    setError(null);
-    setAnalysisResult(null);
-    setScore(0);
-    displayInfo('Starting file processing and analysis...');
-    
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-      
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
-      const token = await user.getIdToken();
-      
-      const formData = new FormData();
-      formData.append('leaseFile', file);
-      
-      // Simulate progress during analysis (optional)
-      const progressTimer = setInterval(() => {
-        setAnalysisProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressTimer);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 500);
-      
-      const response = await fetch(`${apiUrl}/api/analyze`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData
-      });
-      
-      clearInterval(progressTimer);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Upload/Analysis failed with status: ' + response.status }));
-        // Check for specific upgrade required error
-        if (response.status === 402 && errorData.upgradeRequired) {
-           setError(errorData.error);
-           if (showSnackbar) showSnackbar(errorData.error, 'warning');
-           navigate('/pricing');
-        } else {
-           throw new Error(errorData.error || 'Failed to upload and analyze file');
-        }
-        return; // Stop processing
-      }
-      
-      const result = await response.json();
-      
-      if (!result.success || !result.analysis) {
-         throw new Error(result.error || 'Analysis failed to return expected data.');
-      }
-      
-      setAnalysisResult(result.analysis);
-      
-      // Calculate score based on returned analysis
-      if (result.analysis.score !== undefined) {
-        setScore(result.analysis.score);
-      } else if (result.analysis.risks) { // Fallback if score not present
-        const riskCount = result.analysis.risks.length;
-        const calculatedScore = Math.max(0, 100 - (riskCount * 10));
-        setScore(calculatedScore);
-      }
-      
-      setAnalysisProgress(100);
-
-      // Navigate or notify about save status
-      if (result.leaseId) {
-         displaySuccess('Analysis complete and saved!');
-         navigate(`/analysis/${result.leaseId}`);
-      } else {
-          // Notify user that analysis is complete but wasn't saved to their dashboard
-         console.warn("Analysis complete but no new lease ID returned from backend (save likely failed).");
-         displayInfo('Analysis complete, but failed to save to your dashboard.');
-          // Keep the user on the current page to view results without navigating
-      }
-      
-    } catch (err) {
-      console.error('Upload/Analysis error:', err);
-      displayError('Failed to process file: ' + err.message);
-      setAnalysisProgress(0); // Reset progress on error
-    } finally {
-      setAnalyzing(false);
-    }
+    runAnalysis('file', file);
   };
   
   const generateEmailDraft = async () => {
@@ -574,7 +497,7 @@ const LeaseAnalysis = ({ showSnackbar }) => {
       </Box>
     );
   }
-
+  
   // --- Error state for existing lease fetch ---
   if (error && leaseId && !lease) { // Show error only if loading existing lease failed
       return <Alert severity="error">{error}</Alert>;
@@ -636,8 +559,8 @@ const LeaseAnalysis = ({ showSnackbar }) => {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Upload your lease document (PDF or TXT).
               </Typography>
-              <Button
-                variant="outlined"
+        <Button
+          variant="outlined"
                 component="label"
                 startIcon={<CloudUpload />}
                 fullWidth
@@ -655,7 +578,7 @@ const LeaseAnalysis = ({ showSnackbar }) => {
                 startIcon={analyzing && file ? <CircularProgress size={20} color="inherit"/> : <Send />}
               >
                 {analyzing && file ? 'Analyzing Upload...' : 'Upload & Analyze'}
-              </Button>
+        </Button>
             </Paper>
           </Grid>
 
@@ -665,36 +588,43 @@ const LeaseAnalysis = ({ showSnackbar }) => {
               <Typography variant="h6" gutterBottom>Option 2: Paste Text</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Paste the text content of your lease below.
-              </Typography>
-              <TextField
+            </Typography>
+            <TextField
                 multiline
                 rows={8}
-                fullWidth
-                variant="outlined"
+              fullWidth
+              variant="outlined"
                 placeholder="Paste your lease text here..."
-                value={textContent}
-                onChange={handleTextChange}
+              value={textContent}
+              onChange={handleTextChange}
                 disabled={analyzing}
-                sx={{ mb: 2 }}
-              />
-              <Button 
-                variant="contained" 
-                onClick={handleAnalyzeText} 
+              sx={{ mb: 2 }}
+            />
+            <Button
+              variant="contained"
+              onClick={handleAnalyzeText}
                 disabled={!textContent.trim() || analyzing} 
                 fullWidth
                 startIcon={analyzing && textContent ? <CircularProgress size={20} color="inherit"/> : <Send />}
               >
                 {analyzing && textContent ? 'Analyzing Text...' : 'Analyze Text'}
               </Button>
-            </Paper>
-          </Grid>
-        </Grid>
+        </Paper>
+              </Grid>
+            </Grid>
 
         {/* Analysis Progress */}
         {analyzing && (
-          <Box sx={{ mt: 4 }}>
-            <Typography sx={{ mb: 1 }}>Analysis in progress...</Typography>
-            <LinearProgress variant="determinate" value={analysisProgress} />
+          <Box sx={{ mt: 4, textAlign: 'center' }}> { /* Center align text */}
+            <Typography sx={{ mb: 1 }} variant="h6">Analyzing Document...</Typography>
+            <Typography sx={{ mb: 2 }} variant="body2" color="text.secondary">
+              This typically takes 1-2 minutes. Please wait.
+            </Typography>
+            <LinearProgress variant="determinate" value={analysisProgress} sx={{ height: 10, borderRadius: 5, mb: 1 }} /> { /* Add margin bottom */}
+            {/* Add Percentage Display */}
+            <Typography variant="caption" display="block">
+               {`${Math.round(analysisProgress)}%`}
+            </Typography>
           </Box>
         )}
 
@@ -708,7 +638,7 @@ const LeaseAnalysis = ({ showSnackbar }) => {
                     score={score} 
                     // Pass minimal props needed before save/navigation
                 />
-            </Box>
+    </Box>
         )}
 
     </Container>
