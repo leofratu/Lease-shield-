@@ -25,6 +25,7 @@ import UnderstandingCommonClauses from './pages/blog/UnderstandingCommonClauses'
 import NegotiatingLeaseTerms from './pages/blog/NegotiatingLeaseTerms';
 import LeaseRedFlags from './pages/blog/LeaseRedFlags';
 import TenantRightsOverview from './pages/blog/TenantRightsOverview';
+import AdminPage from './pages/AdminPage';
 
 // Create theme
 const theme = createTheme({
@@ -272,6 +273,17 @@ function App() {
               </Layout>
             </ProtectedRoute>
           } />
+
+          {/* Admin Route - Protected by login, authorization checked inside AdminPage */}
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <Layout>
+                <AdminPage />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          
+          {/* 404 Not Found */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
