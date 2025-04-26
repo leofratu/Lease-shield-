@@ -432,6 +432,139 @@ const LeaseAnalysis = ({ showSnackbar }) => {
   };
   // --- End Reset Function --- 
 
+  // --- Helper function defined BEFORE AnalysisResultsDisplay ---
+  const renderOverviewItem = (label, value) => (
+      value && value !== 'Not Found' && (
+          <ListItem sx={{ py: 0.5 }}>
+              <ListItemIcon sx={{ minWidth: 30 }}><Check fontSize="small" color="action"/></ListItemIcon>
+              <ListItemText 
+                  primaryTypographyProps={{ variant: 'body2' }} 
+                  secondaryTypographyProps={{ variant: 'body2', color: 'text.primary', fontWeight: 'medium' }} 
+                  primary={label}
+                  secondary={value}
+              />
+          </ListItem>
+      )
+  );
+
+  // --- Helper Component for Displaying Results --- 
+  // (Moved the complex result rendering logic here for clarity)
+  const AnalysisResultsDisplay = ({ analysisResult, score, fileName, leaseId, generateEmailDraft, handleDownloadJson, handleAnalyzeAnother }) => {
+      if (!analysisResult) return null;
+
+      // Destructure analysisResult for easier access
+      const { extracted_data = {}, clause_summaries = {}, risks = [] } = analysisResult;
+
+      return (
+          <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 }, borderRadius: 2 }}>
+              <Grid container spacing={3} alignItems="center" sx={{ mb: 3 }}>
+                  <Grid item xs={12} md={8}>
+                      <Typography variant="h4" component="h2" gutterBottom>
+                         Analysis Complete: {fileName || 'Pasted Text'}
+                      </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={4} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
+                     {/* Action buttons only make sense for saved analysis */}
+                     {leaseId && (
+                         <Stack direction="row" spacing={1} justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
+                            <Button variant="outlined" size="small" startIcon={<Email />} onClick={generateEmailDraft}>Draft Email</Button>
+                            <Button variant="outlined" size="small" startIcon={<FileDownload />} onClick={handleDownloadJson}>Download JSON</Button>
+                            <Button variant="text" size="small" startIcon={<ReplayIcon/>} onClick={handleAnalyzeAnother}>Analyze Another</Button>
+                         </Stack>
+                     )}
+                  </Grid>
+              </Grid>
+              
+              <Divider sx={{ mb: 3 }}/>
+
+              {/* Overview Section */}
+              <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Overview</Typography>
+              <Card variant="outlined" sx={{ mb: 3 }}>
+                  <CardContent>
+                      <Grid container spacing={2}>
+                           {/* Score */} 
+                           <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
+                              <Typography variant="subtitle1" color="text.secondary">Overall Score</Typography>
+                              <Typography variant="h2" component="div" sx={{ fontWeight: 'bold', color: `${getScoreColor(score)}.main` }}>
+                                  {score}
+                              </Typography>
+                              <Box sx={{ width: '80%', mx: 'auto' }}>
+                                  <LinearProgress variant="determinate" value={score} color={getScoreColor(score)} sx={{ height: 10, borderRadius: 5 }} />
+                              </Box>
+                           </Grid>
+                           {/* Extracted Data */}
+                           <Grid item xs={12} md={8}>
+                              <List dense disablePadding>
+                                  {renderOverviewItem('Landlord', extracted_data.Landlord_Name)}
+                                  {renderOverviewItem('Tenant', extracted_data.Tenant_Name)}
+                                  {renderOverviewItem('Address', extracted_data.Property_Address)}
+                                  {renderOverviewItem('Term', `${extracted_data.Lease_Start_Date || 'N/A'} to ${extracted_data.Lease_End_Date || 'N/A'} (${extracted_data.Lease_Term || 'N/A'} months)`)}
+                                  {renderOverviewItem('Rent', `${extracted_data.Monthly_Rent_Amount || 'N/A'} (Due ${extracted_data.Rent_Due_Date || 'N/A'})`)}
+                                  {renderOverviewItem('Deposit', extracted_data.Security_Deposit_Amount)}
+                              </List>
+                           </Grid>
+                      </Grid>
+                  </CardContent>
+              </Card>
+
+              {/* Risks Section */}
+              {risks.length > 0 && (
+                  <Box sx={{ mb: 3 }}>
+                      <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Potential Issues Found ({risks.length})</Typography>
+                      <List sx={{ bgcolor: 'background.paper', borderRadius: 1, p: 0 }}>
+                          {risks.map((risk, index) => (
+                              <React.Fragment key={index}>
+                                  <ListItem alignItems="flex-start">
+                                      <ListItemIcon sx={{ minWidth: 35, mt: 0.5 }}>
+                                          <Warning color="warning" />
+                                      </ListItemIcon>
+                                      <ListItemText primary={`Issue ${index + 1}`} secondary={risk} />
+                                  </ListItem>
+                                  {index < risks.length - 1 && <Divider variant="inset" component="li" />}
+                              </React.Fragment>
+                          ))}
+                      </List>
+                  </Box>
+              )}
+              {risks.length === 0 && (
+                  <Alert severity="success" icon={<Check />} sx={{ mb: 3 }}>No major unfavorable clauses detected based on common patterns.</Alert>
+              )}
+
+              {/* Clause Summaries Section */}
+              <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Clause Summaries</Typography>
+              <Grid container spacing={2}>
+                  {Object.entries(clause_summaries).map(([key, value]) => (
+                      <Grid item xs={12} md={6} key={key}>
+                          <Accordion variant="outlined" sx={{ '&:before': { display: 'none' }, borderRadius: 1, overflow: 'hidden' }}>
+                              <AccordionSummary expandIcon={<ExpandMore />}>
+                                  <Typography sx={{ fontWeight: 'medium' }}>
+                                      {key.replace(/_/g, ' ')}
+                                  </Typography>
+                              </AccordionSummary>
+                              <AccordionDetails sx={{ bgcolor: 'action.hover' }}>
+                                  <Typography variant="body2" color="text.secondary">
+                                      {value || 'Not Found'}
+                                  </Typography>
+                              </AccordionDetails>
+                          </Accordion>
+                      </Grid>
+                  ))}
+                  {Object.keys(clause_summaries).length === 0 && (
+                      <Grid item xs={12}>
+                          <Typography color="text.secondary">No specific clause summaries were extracted.</Typography>
+                      </Grid>
+                  )}
+              </Grid>
+              
+              {/* Disclaimer */}
+              <Alert severity="info" icon={<InfoOutlined />} sx={{ mt: 4 }}>
+                  Disclaimer: This AI analysis provides a summary and identifies potential issues based on common patterns. It is not a substitute for professional legal advice. Always consult with a qualified attorney before signing any lease agreement.
+              </Alert>
+
+          </Paper>
+      );
+  };
+
   // --- Loading state for existing lease fetch ---
   if (loading && leaseId) { // Only show full page loading when fetching existing lease
     return (
@@ -581,138 +714,5 @@ const LeaseAnalysis = ({ showSnackbar }) => {
     </Container>
   );
 };
-
-// --- Helper Component for Displaying Results --- 
-// (Moved the complex result rendering logic here for clarity)
-const AnalysisResultsDisplay = ({ analysisResult, score, fileName, leaseId, generateEmailDraft, handleDownloadJson, handleAnalyzeAnother }) => {
-    if (!analysisResult) return null;
-
-    // Destructure analysisResult for easier access
-    const { extracted_data = {}, clause_summaries = {}, risks = [] } = analysisResult;
-
-    return (
-        <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 }, borderRadius: 2 }}>
-            <Grid container spacing={3} alignItems="center" sx={{ mb: 3 }}>
-                <Grid item xs={12} md={8}>
-                    <Typography variant="h4" component="h2" gutterBottom>
-                       Analysis Complete: {fileName || 'Pasted Text'}
-                    </Typography>
-                </Grid>
-                <Grid item xs={12} md={4} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
-                   {/* Action buttons only make sense for saved analysis */}
-                   {leaseId && (
-                       <Stack direction="row" spacing={1} justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
-                          <Button variant="outlined" size="small" startIcon={<Email />} onClick={generateEmailDraft}>Draft Email</Button>
-                          <Button variant="outlined" size="small" startIcon={<FileDownload />} onClick={handleDownloadJson}>Download JSON</Button>
-                          <Button variant="text" size="small" startIcon={<ReplayIcon/>} onClick={handleAnalyzeAnother}>Analyze Another</Button>
-                       </Stack>
-                    )}
-                </Grid>
-            </Grid>
-            
-            <Divider sx={{ mb: 3 }}/>
-
-            {/* Overview Section */}
-            <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Overview</Typography>
-            <Card variant="outlined" sx={{ mb: 3 }}>
-                <CardContent>
-                    <Grid container spacing={2}>
-                         {/* Score */} 
-                         <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
-                            <Typography variant="subtitle1" color="text.secondary">Overall Score</Typography>
-                            <Typography variant="h2" component="div" sx={{ fontWeight: 'bold', color: `${getScoreColor(score)}.main` }}>
-                                {score}
-                            </Typography>
-                            <Box sx={{ width: '80%', mx: 'auto' }}>
-                                <LinearProgress variant="determinate" value={score} color={getScoreColor(score)} sx={{ height: 10, borderRadius: 5 }} />
-                            </Box>
-                         </Grid>
-                         {/* Extracted Data */}
-                         <Grid item xs={12} md={8}>
-                            <List dense disablePadding>
-                                {renderOverviewItem('Landlord', extracted_data.Landlord_Name)}
-                                {renderOverviewItem('Tenant', extracted_data.Tenant_Name)}
-                                {renderOverviewItem('Address', extracted_data.Property_Address)}
-                                {renderOverviewItem('Term', `${extracted_data.Lease_Start_Date || 'N/A'} to ${extracted_data.Lease_End_Date || 'N/A'} (${extracted_data.Lease_Term || 'N/A'} months)`)}
-                                {renderOverviewItem('Rent', `${extracted_data.Monthly_Rent_Amount || 'N/A'} (Due ${extracted_data.Rent_Due_Date || 'N/A'})`)}
-                                {renderOverviewItem('Deposit', extracted_data.Security_Deposit_Amount)}
-                            </List>
-                         </Grid>
-                    </Grid>
-                </CardContent>
-            </Card>
-
-            {/* Risks Section */}
-            {risks.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                    <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Potential Issues Found ({risks.length})</Typography>
-                    <List sx={{ bgcolor: 'background.paper', borderRadius: 1, p: 0 }}>
-                        {risks.map((risk, index) => (
-                            <React.Fragment key={index}>
-                                <ListItem alignItems="flex-start">
-                                    <ListItemIcon sx={{ minWidth: 35, mt: 0.5 }}>
-                                        <Warning color="warning" />
-                                    </ListItemIcon>
-                                    <ListItemText primary={`Issue ${index + 1}`} secondary={risk} />
-                                </ListItem>
-                                {index < risks.length - 1 && <Divider variant="inset" component="li" />}
-                            </React.Fragment>
-                        ))}
-                    </List>
-                </Box>
-            )}
-            {risks.length === 0 && (
-                <Alert severity="success" icon={<Check />} sx={{ mb: 3 }}>No major unfavorable clauses detected based on common patterns.</Alert>
-            )}
-
-            {/* Clause Summaries Section */}
-            <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>Clause Summaries</Typography>
-            <Grid container spacing={2}>
-                {Object.entries(clause_summaries).map(([key, value]) => (
-                    <Grid item xs={12} md={6} key={key}>
-                        <Accordion variant="outlined" sx={{ '&:before': { display: 'none' }, borderRadius: 1, overflow: 'hidden' }}>
-                            <AccordionSummary expandIcon={<ExpandMore />}>
-                                <Typography sx={{ fontWeight: 'medium' }}>
-                                    {key.replace(/_/g, ' ')}
-                                </Typography>
-                            </AccordionSummary>
-                            <AccordionDetails sx={{ bgcolor: 'action.hover' }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    {value || 'Not Found'}
-                                </Typography>
-                            </AccordionDetails>
-                        </Accordion>
-                    </Grid>
-                ))}
-                {Object.keys(clause_summaries).length === 0 && (
-                    <Grid item xs={12}>
-                        <Typography color="text.secondary">No specific clause summaries were extracted.</Typography>
-                    </Grid>
-                )}
-            </Grid>
-            
-            {/* Disclaimer */}
-            <Alert severity="info" icon={<InfoOutlined />} sx={{ mt: 4 }}>
-                Disclaimer: This AI analysis provides a summary and identifies potential issues based on common patterns. It is not a substitute for professional legal advice. Always consult with a qualified attorney before signing any lease agreement.
-            </Alert>
-
-        </Paper>
-    );
-};
-
-// Helper function within AnalysisResultsDisplay or defined above it
-const renderOverviewItem = (label, value) => (
-    value && value !== 'Not Found' && (
-        <ListItem sx={{ py: 0.5 }}>
-            <ListItemIcon sx={{ minWidth: 30 }}><Check fontSize="small" color="action"/></ListItemIcon>
-            <ListItemText 
-                primaryTypographyProps={{ variant: 'body2' }} 
-                secondaryTypographyProps={{ variant: 'body2', color: 'text.primary', fontWeight: 'medium' }} 
-                primary={label}
-                secondary={value}
-            />
-        </ListItem>
-    )
-);
 
 export default LeaseAnalysis; 

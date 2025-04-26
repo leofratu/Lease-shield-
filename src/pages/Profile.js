@@ -12,7 +12,7 @@ import { useUserProfile } from '../context/UserProfileContext';
 
 const Profile = ({ showSnackbar }) => {
   const { user } = useAuthState();
-  const { profile, loadingProfile } = useUserProfile();
+  const { profile, loadingProfile } = useUserProfile() || { profile: null, loadingProfile: true };
   const navigate = useNavigate();
 
   const handleLogout = async () => {

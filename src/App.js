@@ -69,7 +69,7 @@ const theme = createTheme({
 // Updated Protected route component
 const ProtectedRoute = ({ children, requirePaid = false }) => {
   const { user, loading: authLoading } = useAuthState();
-  const { profile, loadingProfile } = useUserProfile();
+  const { profile, loadingProfile } = useUserProfile() || { profile: null, loadingProfile: true };
 
   if (authLoading || (requirePaid && loadingProfile)) {
     // Show loading indicator if auth is loading, OR
@@ -96,7 +96,7 @@ const ProtectedRoute = ({ children, requirePaid = false }) => {
 // Component to handle conditional rendering/redirect for the /trial route
 const TrialRouteHandler = () => {
   const { user, loading: authLoading } = useAuthState();
-  const { profile, loadingProfile } = useUserProfile();
+  const { profile, loadingProfile } = useUserProfile() || { profile: null, loadingProfile: true };
 
   if (authLoading || loadingProfile) {
     return <div>Loading...</div>; // Show loading while checking state
