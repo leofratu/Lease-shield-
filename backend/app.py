@@ -45,7 +45,12 @@ if not gemini_api_keys:
 
 # --- Flask App and Firebase Initialization --- 
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS explicitly
+CORS(app, origins=[
+    "https://lease-shield-frontend.onrender.com", # Your deployed frontend
+    "http://localhost:3000" # For local development
+], supports_credentials=True)
 
 # --- Initialize Firebase Admin SDK (Handles Local and Deployed) ---
 db = None # Initialize db to None
