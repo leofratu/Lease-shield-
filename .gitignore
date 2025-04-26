@@ -1,0 +1,40 @@
+# Environment variables
+.env
+
+# Node modules
+node_modules/
+
+# Build directory
+build/
+dist/
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# macOS specific files
+.DS_Store
+
+# Firebase SDK config (if storing locally - better to use environment variables)
+# src/firebase/config.js 
+# backend/lease-shield-ai-firebase-admin-sdk.json 
+
+# Python cache/compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# Other
+*.env*.local
+*.env.development.local
+*.env.test.local
+*.env.production.local 

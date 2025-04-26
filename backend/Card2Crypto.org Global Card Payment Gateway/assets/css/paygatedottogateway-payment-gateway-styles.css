@@ -1,0 +1,9 @@
+.card2cryptogateway-payment-method-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.card2cryptogateway-payment-method-wrapper img {
+    display: flex;
+    width: 100%;
+}

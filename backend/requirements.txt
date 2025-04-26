@@ -1,0 +1,9 @@
+flask==2.2.3
+flask-cors==3.0.10
+google-generativeai==0.3.1
+firebase-admin==6.1.0
+PyPDF2==3.0.1
+werkzeug==2.2.3
+gunicorn==20.1.0
+requests # Needed for Maxelpay API calls
+cryptography # Needed for Maxelpay payload encryption 
