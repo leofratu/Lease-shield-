@@ -215,15 +215,29 @@ const LeaseAnalysis = ({ showSnackbar }) => {
     // Reset single-analysis specific states
     setAnalysisProgress(0); 
     setError(null);
-    setAnalysisResult(null);
-    setScore(0);
+    // Clear previous results depending on mode
+    if (isMultiMode) {
+        // Keep multiAnalysisResults, handled by caller
+    } else {
+        setAnalysisResult(null); 
+        setScore(0);          
+    }
 
-    // Simulate progress (can be made more sophisticated for multi-mode later)
     let progress = 0;
-    const progressTimer = setInterval(() => {
-      progress = Math.min(progress + 5, 90); // Simulate faster progress, stop at 90%
+    let progressTimer = null; // Declare timer variable
+
+    const targetDurationSeconds = 50; // Target ~50 seconds simulation before backend likely responds
+    const maxSimulatedProgress = 95; // Simulate up to 95%
+    const intervalTimeMs = Math.max(100, (targetDurationSeconds * 1000) / maxSimulatedProgress); // Calculate interval, ensure minimum delay
+
+    // Start the smoother progress interval
+    progressTimer = setInterval(() => {
+      progress = Math.min(progress + 1, maxSimulatedProgress); // Increment by 1
       setAnalysisProgress(progress);
-    }, 500);
+      if (progress >= maxSimulatedProgress) {
+        clearInterval(progressTimer); // Stop simulation at max %%
+      }
+    }, intervalTimeMs); // Use calculated interval
 
     try {
       const user = auth.currentUser;
@@ -258,23 +272,22 @@ const LeaseAnalysis = ({ showSnackbar }) => {
         throw new Error('Invalid analysis type');
       }
 
-      clearInterval(progressTimer);
-      setAnalysisProgress(95); // Indicate backend processing done
+      clearInterval(progressTimer); // Ensure timer stops just before final state updates
 
       if (!response.ok) {
+        setAnalysisProgress(0); // Reset progress on fetch error
         const errorData = await response.json().catch(() => ({ error: `Analysis failed with status: ${response.status}` }));
          if (response.status === 402 && errorData.upgradeRequired) {
-            // Specific handling for upgrade required - maybe navigate globally?
-            // For now, return as error to be handled by caller
             return { success: false, error: errorData.error, upgradeRequired: true }; 
          } else {
-           throw new Error(errorData.error || 'Failed to analyze lease');
+           return { success: false, error: errorData.error || 'Failed to analyze lease' }; 
          }
       }
 
       const result = await response.json();
 
       if (!result.success || !result.analysis) {
+        setAnalysisProgress(0); // Reset progress on result error
         throw new Error(result.error || 'Analysis failed to return expected data.');
       }
 
@@ -287,7 +300,7 @@ const LeaseAnalysis = ({ showSnackbar }) => {
         calculatedScore = Math.max(0, 100 - (riskCount * 10));
       }
       
-      setAnalysisProgress(100);
+      setAnalysisProgress(100); // Set to 100 ONLY on final success
       
       // Return success object
       return {
@@ -298,13 +311,11 @@ const LeaseAnalysis = ({ showSnackbar }) => {
       };
 
     } catch (err) {
-      clearInterval(progressTimer);
-      setAnalysisProgress(0);
+      if (progressTimer) clearInterval(progressTimer); // Ensure timer stops on any catch
+      setAnalysisProgress(0); // Reset progress on error
       console.error('Analysis error:', err);
       // Return error object
       return { success: false, error: err.message };
-    } finally {
-      // Note: setAnalyzing(false) should be handled by the calling function (handleUpload/handleMultiUpload)
     }
   };
 
