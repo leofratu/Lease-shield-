@@ -529,7 +529,7 @@ def analyze_document():
         can_analyze = True
     elif user_profile.get('subscriptionTier') == 'free':
         free_scans_used = user_profile.get('freeScansUsed', 0)
-        if free_scans_used < 1:
+        if free_scans_used < 3:
             can_analyze = True
             is_free_scan_increment = True # Mark that we need to increment count after analysis
         else:

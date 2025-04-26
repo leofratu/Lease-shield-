@@ -62,7 +62,7 @@ const Profile = ({ showSnackbar }) => {
                 <Box>
                   <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Free Trial</Typography>
                   <Typography variant="body2" color="text.secondary">
-                     Free analyses remaining: {Math.max(0, 1 - (profile.freeScansUsed || 0))}
+                     Free analyses remaining: {Math.max(0, 3 - (profile.freeScansUsed || 0))}
                   </Typography>
                    <Button 
                       variant="contained" 

@@ -21,7 +21,8 @@ import {
   Menu,
   MenuItem,
   Snackbar,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { 
   Menu as MenuIcon, 
@@ -37,7 +38,7 @@ import { useAuthState } from '../hooks/useAuthState';
 
 const Layout = ({ children, showAuthButtons = false }) => {
   const navigate = useNavigate();
-  const { user } = useAuthState();
+  const { user, loading } = useAuthState();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -63,11 +64,11 @@ const Layout = ({ children, showAuthButtons = false }) => {
   };
   // --- End Snackbar State ---
 
-  const handleSignOut = async () => {
+  const handleLogout = async () => {
     try {
       await signOut(auth);
       showSnackbar('Successfully signed out', 'info');
-      navigate('/');
+      navigate('/login');
     } catch (error) {
       console.error('Error signing out:', error);
       showSnackbar('Error signing out', 'error');
@@ -143,7 +144,9 @@ const Layout = ({ children, showAuthButtons = false }) => {
             Lease Shield AI
           </Typography>
           
-          {user ? (
+          {loading ? (
+            <CircularProgress color="inherit" size={24} />
+          ) : user ? (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <IconButton 
                 onClick={handleProfileMenuOpen}
@@ -175,7 +178,7 @@ const Layout = ({ children, showAuthButtons = false }) => {
                 </MenuItem>
                 <MenuItem onClick={() => {
                   handleMenuClose();
-                  handleSignOut();
+                  handleLogout();
                 }}>
                   Sign Out
                 </MenuItem>

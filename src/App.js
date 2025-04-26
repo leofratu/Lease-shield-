@@ -146,7 +146,7 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/analysis" element={
-            <ProtectedRoute requirePaid={true}>
+            <ProtectedRoute>
               <Layout>
                 <LeaseAnalysis />
               </Layout>
