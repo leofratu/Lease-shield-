@@ -95,21 +95,30 @@ try:
         else:
             raise FileNotFoundError(f"Firebase key file not found at {render_secret_path} or {local_key_path}")
 
-    if not project_id:
-         raise ValueError("Could not determine Firebase project ID from credentials.")
-
-firebase_admin.initialize_app(cred, {
-        'storageBucket': project_id + '.appspot.com'
-    })
-    print("Firebase Admin SDK initialized successfully.")
-    db = firestore.client() # Assign db client ONLY on success
+        if not project_id:
+            raise ValueError("Could not determine Firebase project ID from credentials.")
+        
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': project_id + '.appspot.com'
+        })
+        print("Firebase Admin SDK initialized successfully.")
+        db = firestore.client() # Assign db client ONLY on success
 
 except FileNotFoundError as e:
     print(f"CRITICAL ERROR: Firebase Admin SDK JSON key file not found. {e}")
+    db = None # Ensure db is None if init fails
 except ValueError as e:
-     print(f"CRITICAL ERROR: Invalid Firebase Admin SDK JSON content or missing project_id. {e}")
+    print(f"CRITICAL ERROR: Invalid Firebase Admin SDK JSON content or missing project_id. {e}")
+    db = None # Ensure db is None if init fails
 except Exception as e:
     print(f"CRITICAL ERROR: Failed to initialize Firebase Admin SDK: {e}")
+    db = None # Ensure db is None if init fails
+
+# Only proceed if db was initialized
+if db is None:
+    print("Aborting application startup due to Firebase initialization failure.")
+    # Optional: exit the application if Firebase is absolutely required
+    # sys.exit(1) 
 
 # --- Remove global Gemini Init --- 
 # genai.configure(api_key=os.environ.get('GEMINI_API_KEY')) # REMOVED
@@ -132,8 +141,8 @@ def extract_pdf_text(file_stream):
     text = ""
     try:
         reader = PyPDF2.PdfReader(file_stream)
-            for page_num in range(len(reader.pages)):
-                page = reader.pages[page_num]
+        for page_num in range(len(reader.pages)):
+            page = reader.pages[page_num]
             text += page.extract_text() + "\\n"
         return text
     except Exception as e:
