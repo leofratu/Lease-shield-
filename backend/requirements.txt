@@ -6,4 +6,5 @@ PyPDF2==3.0.1
 werkzeug==2.2.3
 gunicorn==20.1.0
 requests # Needed for Maxelpay API calls
-cryptography # Needed for Maxelpay payload encryption 
+cryptography # Needed for Maxelpay payload encryption
+python-dotenv # Added for loading .env in dev/potentially prod fallback 
