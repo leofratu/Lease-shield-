@@ -39,6 +39,9 @@ const createAdminCommercialUser = (token, email, password, limit) => {
 // --- End API Helpers ---
 
 const AdminPage = () => {
+    // Log when the component function body starts executing
+    console.log("AdminPage component mounting..."); 
+
     const { user, loading: authLoading } = useAuthState();
     const [isAdmin, setIsAdmin] = useState(false);
     const [users, setUsers] = useState([]);

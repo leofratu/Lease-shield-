@@ -78,22 +78,28 @@ const theme = createTheme({
 const ProtectedRoute = ({ children, requirePaid = false }) => {
   const { user, loading: authLoading } = useAuthState();
   const { profile, loadingProfile } = useUserProfile() || { profile: null, loadingProfile: true };
+  const location = useLocation(); // Get current location
+
+  console.log(`ProtectedRoute (${location.pathname}): AuthLoading=${authLoading}, ProfileLoading=${loadingProfile}, User? ${!!user}`);
 
   if (authLoading || loadingProfile) {
+    console.log(`ProtectedRoute (${location.pathname}): Showing Loading...`);
     return <div>Loading...</div>;
   }
 
   if (!user) {
+    console.log(`ProtectedRoute (${location.pathname}): No user found, redirecting to /login`);
     return <Navigate to="/login" />;
   }
 
   if (requirePaid) {
     if (!profile || profile.subscriptionTier !== 'paid') {
-      console.log("Access denied: Paid subscription required or profile not loaded.");
+      console.log(`ProtectedRoute (${location.pathname}): Paid required, but profile tier is ${profile?.subscriptionTier}. Redirecting to /pricing`);
       return <Navigate to="/pricing" replace />;
     }
   }
 
+  console.log(`ProtectedRoute (${location.pathname}): Access granted, rendering children.`);
   return children;
 };
 
