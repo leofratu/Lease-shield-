@@ -136,6 +136,17 @@ def verify_token(id_token):
         print(f"Token verification error: {e}")
         return None
 
+# Check if user ID belongs to the designated admin email
+def is_admin(user_id):
+    if not user_id:
+        return False
+    try:
+        user = firebase_admin.auth.get_user(user_id)
+        return user.email == 'leofratu@gmail.com'
+    except Exception as e:
+        print(f"Error checking admin status for {user_id}: {e}")
+        return False
+
 # Modified to accept a file stream/object instead of path
 def extract_pdf_text(file_stream):
     text = ""
@@ -575,21 +586,39 @@ def analyze_document():
 
     can_analyze = False
     is_free_scan_increment = False
+    # Flag to indicate if we should increment the scan count (used for limited tiers)
+    should_increment_scans = False 
 
-    if user_profile.get('subscriptionTier') == 'paid':
+    tier = user_profile.get('subscriptionTier')
+    scans_used = user_profile.get('freeScansUsed', 0) # Use 'freeScansUsed' to track usage across tiers
+
+    if tier == 'paid':
         can_analyze = True
-    elif user_profile.get('subscriptionTier') == 'free':
-        free_scans_used = user_profile.get('freeScansUsed', 0)
-        if free_scans_used < 3:
+        should_increment_scans = False # Paid users have unlimited scans
+    elif tier == 'commercial':
+        max_scans = user_profile.get('maxAllowedScans') 
+        # Treat null or negative max_scans as 0 (no scans allowed unless explicitly set higher)
+        if max_scans is None or not isinstance(max_scans, int) or max_scans < 0:
+            max_scans = 0
+            
+        if scans_used < max_scans:
             can_analyze = True
-            is_free_scan_increment = True # Mark that we need to increment count after analysis
+            should_increment_scans = True # Increment usage for commercial tier
+        else:
+            print(f"User {user_id} (Commercial) scan limit ({max_scans}) reached.")
+            return jsonify({'error': f'Commercial scan limit reached ({max_scans} used). Contact admin for more.', 'upgradeRequired': False}), 402 # Payment Required (or custom code)
+    elif tier == 'free':
+        free_limit = 3
+        if scans_used < free_limit:
+            can_analyze = True
+            should_increment_scans = True # Increment usage for free tier
         else:
             # Free limit reached
              print(f"User {user_id} free scan limit reached.")
              return jsonify({'error': 'Free analysis limit reached. Please upgrade to analyze more leases.', 'upgradeRequired': True}), 402 # Payment Required
     else:
         # Unknown subscription tier - deny access
-        print(f"User {user_id} has unknown subscription tier: {user_profile.get('subscriptionTier')}")
+        print(f"User {user_id} has unknown subscription tier: {tier}")
         return jsonify({'error': 'Invalid subscription status.'}), 403
         
     if not can_analyze:
@@ -665,10 +694,10 @@ def analyze_document():
             }
 
         # --- Increment free scan count if needed --- 
-        if is_free_scan_increment:
+        if should_increment_scans:
             if not increment_free_scan_count(user_id):
                  # Log error but proceed - analysis was done, just count failed
-                 print(f"Failed to increment free scan count for user {user_id} after successful analysis.")
+                 print(f"Failed to increment scan count for user {user_id} (tier: {tier}) after successful analysis.")
         # --- End Increment --- 
 
         # Save result to Firestore (as before, creating new doc)
@@ -755,6 +784,198 @@ def delete_lease(lease_id):
         print(f"Error deleting lease {lease_id}: {e}")
         return jsonify({'error': 'An error occurred while deleting the analysis'}), 500
 # --- End DELETE Endpoint --- 
+
+# --- Admin Routes --- 
+
+@app.route('/api/admin/users', methods=['GET'])
+def get_all_users():
+    if db is None:
+        return jsonify({'error': 'Server configuration error: Database unavailable.'}), 500
+
+    # 1. Verify Auth Token
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Unauthorized: Missing or invalid token'}), 401
+    token = auth_header.split('Bearer ')[1]
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'error': 'Unauthorized: Invalid token'}), 401
+
+    # 2. Check if the user is the admin
+    if not is_admin(user_id):
+        print(f"Forbidden access attempt to /api/admin/users by user: {user_id}")
+        return jsonify({'error': 'Forbidden: Admin access required'}), 403
+
+    # 3. Fetch users from Firestore
+    try:
+        users_ref = db.collection('users')
+        all_users_docs = users_ref.stream()
+        users_list = []
+        for doc in all_users_docs:
+            user_data = doc.to_dict()
+            user_data['userId'] = doc.id # Ensure userId is included
+            # Optionally fetch email from Firebase Auth if not stored in profile
+            try:
+                auth_user = firebase_admin.auth.get_user(doc.id)
+                user_data['email'] = auth_user.email
+            except Exception as auth_err:
+                print(f"Could not fetch email for user {doc.id}: {auth_err}")
+                user_data['email'] = user_data.get('email', 'N/A') # Use stored email or N/A
+            
+            # Convert Timestamps to strings for JSON serialization if necessary
+            if 'createdAt' in user_data and isinstance(user_data['createdAt'], firestore.SERVER_TIMESTAMP.__class__):
+                 # Handle uncommitted server timestamps if needed, or skip/format
+                 user_data['createdAt'] = None # Or format if available after get()
+            elif 'createdAt' in user_data and hasattr(user_data['createdAt'], 'isoformat'):
+                 user_data['createdAt'] = user_data['createdAt'].isoformat()
+            # Add similar handling for other timestamp fields like 'subscriptionStartDate'
+
+            users_list.append(user_data)
+            
+        return jsonify(users_list), 200
+    except Exception as e:
+        print(f"Error fetching users from Firestore: {e}")
+        return jsonify({'error': 'Failed to retrieve users'}), 500
+
+@app.route('/api/admin/set-scans', methods=['POST'])
+def set_user_scans():
+    if db is None:
+        return jsonify({'error': 'Server configuration error: Database unavailable.'}), 500
+
+    # 1. Verify Auth Token & Admin Status
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Unauthorized: Missing or invalid token'}), 401
+    token = auth_header.split('Bearer ')[1]
+    user_id = verify_token(token)
+    if not user_id or not is_admin(user_id):
+        return jsonify({'error': 'Forbidden: Admin access required'}), 403
+
+    # 2. Get Data from Request
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Missing request body'}), 400
+        
+    target_user_id = data.get('targetUserId')
+    scan_limit_input = data.get('scanLimit')
+
+    if not target_user_id:
+        return jsonify({'error': 'Missing targetUserId'}), 400
+    if scan_limit_input is None: # Allow 0, check specifically for None
+        return jsonify({'error': 'Missing scanLimit'}), 400
+        
+    try:
+        # Ensure scan_limit is a non-negative integer
+        scan_limit = int(scan_limit_input)
+        if scan_limit < 0:
+            raise ValueError("Scan limit cannot be negative.")
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid scanLimit: must be a non-negative integer.'}), 400
+
+    # 3. Update Firestore
+    try:
+        user_ref = db.collection('users').document(target_user_id)
+        user_doc = user_ref.get()
+        
+        if not user_doc.exists:
+            return jsonify({'error': 'Target user not found'}), 404
+            
+        # Set the maxAllowedScans field
+        # Decide if freeScansUsed should be reset - let's not reset for now
+        user_ref.update({
+            'maxAllowedScans': scan_limit
+            # Optionally update tier if setting scans implies a specific tier
+            # 'subscriptionTier': 'commercial' # Or another tier name
+        })
+        
+        print(f"Admin {user_id} set scan limit for user {target_user_id} to {scan_limit}")
+        return jsonify({'success': True, 'message': f'Scan limit updated to {scan_limit} for user {target_user_id}'}), 200
+        
+    except Exception as e:
+        print(f"Error updating scan limit for {target_user_id}: {e}")
+        return jsonify({'error': 'Failed to update user scan limit'}), 500
+        
+@app.route('/api/admin/create-commercial', methods=['POST'])
+def create_commercial_user():
+    if db is None:
+        return jsonify({'error': 'Server configuration error: Database unavailable.'}), 500
+
+    # 1. Verify Auth Token & Admin Status
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Unauthorized: Missing or invalid token'}), 401
+    token = auth_header.split('Bearer ')[1]
+    requesting_user_id = verify_token(token)
+    if not requesting_user_id or not is_admin(requesting_user_id):
+        return jsonify({'error': 'Forbidden: Admin access required'}), 403
+
+    # 2. Get Data from Request
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Missing request body'}), 400
+        
+    email = data.get('email')
+    password = data.get('password')
+    scan_limit_input = data.get('scanLimit')
+
+    if not email or not password:
+        return jsonify({'error': 'Missing email or password'}), 400
+    if scan_limit_input is None:
+        return jsonify({'error': 'Missing scanLimit'}), 400
+        
+    try:
+        scan_limit = int(scan_limit_input)
+        if scan_limit < 0:
+            raise ValueError("Scan limit cannot be negative.")
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid scanLimit: must be a non-negative integer.'}), 400
+        
+    # 3. Create User in Firebase Auth
+    new_user_uid = None
+    try:
+        new_user = firebase_admin.auth.create_user(
+            email=email,
+            password=password,
+            email_verified=True # Optional: mark as verified since admin created
+        )
+        new_user_uid = new_user.uid
+        print(f"Admin {requesting_user_id} created new Auth user {email} ({new_user_uid})")
+    except firebase_admin.auth.EmailAlreadyExistsError:
+        print(f"Failed to create user: Email {email} already exists.")
+        return jsonify({'error': 'Email already exists'}), 409 # Conflict
+    except Exception as e:
+        print(f"Error creating Firebase Auth user {email}: {e}")
+        return jsonify({'error': 'Failed to create user authentication'}), 500
+        
+    # 4. Create User Profile in Firestore
+    if new_user_uid:
+        try:
+            user_ref = db.collection('users').document(new_user_uid)
+            profile_data = {
+                'userId': new_user_uid,
+                'email': email, 
+                'subscriptionTier': 'commercial', # Assign specific tier
+                'maxAllowedScans': scan_limit,
+                'freeScansUsed': 0, # Start with 0 used
+                'createdAt': firestore.SERVER_TIMESTAMP
+            }
+            user_ref.set(profile_data)
+            print(f"Created Firestore profile for commercial user {email} ({new_user_uid}) with scan limit {scan_limit}")
+            return jsonify({
+                'success': True, 
+                'message': 'Commercial user created successfully', 
+                'userId': new_user_uid, 
+                'email': email
+            }), 201 # Created
+        except Exception as e:
+            print(f"CRITICAL: Failed to create Firestore profile for user {new_user_uid} after Auth creation: {e}")
+            # Consider deleting the Auth user here or adding manual cleanup process
+            return jsonify({'error': 'User authentication created, but failed to create user profile data.'}), 500
+    else:
+        # Should not happen if Auth creation didn't error, but as fallback
+        return jsonify({'error': 'Failed to get new user ID after creation'}), 500
+
+# --- End Admin Routes --- 
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8081))
