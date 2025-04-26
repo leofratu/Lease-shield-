@@ -190,7 +190,7 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/calculator" element={
-            <ProtectedRoute requirePaid={true}>
+            <ProtectedRoute>
               <Layout>
                 <LeaseCalculator />
               </Layout>

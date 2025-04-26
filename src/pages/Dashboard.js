@@ -248,243 +248,182 @@ const Dashboard = ({ showSnackbar }) => {
     );
   }
 
-  if (profile.subscriptionTier === 'free') {
-    return (
-      <Container maxWidth="md" sx={{ mt: 4, mb: 4, textAlign: 'center' }}>
-          <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
-             <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-               Upgrade to Pro
-             </Typography>
-             <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                You are currently on the Free Trial. Upgrade to Pro to unlock unlimited analyses and all features.
-             </Typography>
-             
-             <Paper 
-                 elevation={0} 
-                 variant="outlined"
-                 sx={{ 
-                    p: 3, 
-                    borderRadius: 3, 
-                    border: '1px solid',
-                    borderColor: 'primary.main',
-                    maxWidth: 400,
-                    mx: 'auto',
-                    mb: 4
-                 }}
-              >
-                 <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
-                    Pro Monthly
-                 </Typography>
-                 <Typography variant="h4" gutterBottom>
-                    $5 <Typography component="span" variant="body1" color="text.secondary">/ month</Typography>
-                 </Typography>
-                 <List dense sx={{ mb: 3, textAlign: 'left' }}>
-                    <ListItem disableGutters>
-                       <ListItemIcon sx={{ minWidth: 30 }}><CheckIcon color="success" fontSize="small" /></ListItemIcon>
-                       <ListItemText primary="Unlimited Lease Analysis Scans" />
-                    </ListItem>
-                    <ListItem disableGutters>
-                       <ListItemIcon sx={{ minWidth: 30 }}><CheckIcon color="success" fontSize="small" /></ListItemIcon>
-                       <ListItemText primary="Detailed Clause Summaries" />
-                    </ListItem>
-                    <ListItem disableGutters>
-                       <ListItemIcon sx={{ minWidth: 30 }}><CheckIcon color="success" fontSize="small" /></ListItemIcon>
-                       <ListItemText primary="Risk Level Scoring" />
-                    </ListItem>
-                 </List>
-                 <Button 
-                    variant="contained" 
-                    size="large"
-                    startIcon={<UpgradeIcon />}
-                    onClick={() => navigate('/pricing')}
-                    fullWidth
-                 >
-                    View Full Pricing & Subscribe
-                 </Button>
-             </Paper>
-
-             <Button 
-                variant="text"
-                onClick={() => navigate('/analysis')}
-             >
-                Continue with Free Trial ({Math.max(0, 3 - (profile.freeScansUsed || 0))} scans left)
-             </Button>
-             
-          </Paper>
-      </Container>
-    );
-  }
-
-  if (profile.subscriptionTier === 'paid') {
-    return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: { xs: 2, md: 3 },
-            mb: 4, 
-            bgcolor: 'primary.lighter',
-            borderRadius: 2,
-            border: '1px solid', 
-            borderColor: 'divider'
-          }}
-        >
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm>
-              <Typography variant="h4" component="h1" gutterBottom>
-                Welcome, {user?.email || 'User'}! 
-              </Typography>
-              {showTip && (
-                <Slide direction="down" in={showTip} mountOnEnter unmountOnExit>
-                   <Alert severity="info" onClose={() => setShowTip(false)} sx={{ mb: 2 }}>
-                     Tip: Click 'Analyze New Lease' to upload or paste text for analysis.
-                   </Alert>
-                </Slide>
-              )}
-            </Grid>
-            <Grid item xs={12} sm="auto" sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
-              <Button 
-                variant="contained" 
-                size="large"
-                startIcon={<Add />}
-                onClick={() => navigate('/analysis')}
-                sx={{ borderRadius: 8 }}
-              >
-                Analyze New Lease
-              </Button>
-            </Grid>
-          </Grid>
-        </Paper>
-
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={4}>
-              <Card variant="outlined">
-                  <CardContent>
-                      <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
-                         Total Analyses
-                      </Typography>
-                      <Typography variant="h5" component="div">
-                         {stats.totalAnalyses}
-                      </Typography>
-                  </CardContent>
-              </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
-               <Card variant="outlined">
-                  <CardContent>
-                      <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
-                         Last Analysis
-                      </Typography>
-                      <Typography variant="h5" component="div">
-                         {formatLastAnalysisDate(stats.lastAnalysisDate)}
-                      </Typography>
-                  </CardContent>
-              </Card>
-          </Grid>
-          
-        </Grid>
-
-        <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
-          My Lease Analyses
-        </Typography>
-        
-        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
-
-        {leases.length === 0 && !error && (
-           <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
-              <Typography variant="h6" gutterBottom>No analyses yet!</Typography>
-              <Typography color="text.secondary" sx={{ mb: 2 }}>
-                Click "Analyze New Lease" to get started.
-              </Typography>
-              <Button 
-                variant="contained" 
-                startIcon={<Add />}
-                onClick={() => navigate('/analysis')}
-              >
-                Analyze New Lease
-              </Button>
-           </Paper>
-        )}
-        
-        {leases.length > 0 && (
-          <Grid container spacing={3}>
-            {leases.map((lease) => (
-              <Fade in timeout={500} key={lease.id}>
-                <Grid item xs={12} md={6} lg={4}>
-                  <Card 
-                    variant="outlined"
-                    sx={{
-                      borderLeft: `4px solid ${lease.status === 'complete' ? getScoreColor(lease.analysis?.score) : 'grey.300'}`
-                    }}
-                  >
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                         <Tooltip title={lease.fileName || 'No Filename'} placement="top-start">
-                           <Typography 
-                              variant="h6" 
-                              noWrap
-                              sx={{ fontWeight: 500, maxWidth: '80%' }}
-                           >
-                             {lease.fileName || 'Untitled Analysis'}
-                           </Typography>
-                         </Tooltip>
-                          {lease.status === 'complete' && lease.analysis?.score !== undefined && (
-                              <Tooltip title={`Risk Score: ${lease.analysis.score}/100`}>
-                                 {getScoreSeverityChip(lease.analysis.score)}
-                              </Tooltip>
-                          )}
-                          {lease.status === 'error' && (
-                              <Tooltip title="Analysis encountered an error">
-                                  <Chip icon={<Warning />} label="Error" color="error" size="small" />
-                              </Tooltip>
-                          )}
-                           {lease.status === 'pending' && (
-                              <Tooltip title="Analysis in progress...">
-                                   <Chip icon={<CircularProgress size={14}/>} label="Processing" color="info" size="small" />
-                              </Tooltip>
-                          )}
-                      </Box>
-                      
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body2" color="text.secondary">
-                          {lease.createdAt instanceof Timestamp ? formatDistanceToNow(lease.createdAt.toDate(), { addSuffix: true }) : (lease.createdAt ? formatDistanceToNow(new Date(lease.createdAt), { addSuffix: true }) : 'Unknown date')}
-                        </Typography>
-                         {getStatusChip(lease.status)}
-                      </Box>
-                    </CardContent>
-                    <Divider />
-                    <CardActions sx={{ justifyContent: 'space-between' }}>
-                       <Tooltip title="Delete Analysis">
-                         <IconButton 
-                            size="small" 
-                            color="error"
-                            onClick={() => handleDeleteLease(lease.id)} 
-                         >
-                            <DeleteIcon fontSize="small" />
-                         </IconButton>
-                       </Tooltip>
-                      <Button 
-                        size="small" 
-                        variant="contained"
-                        onClick={() => navigate(`/analysis/${lease.id}`)}
-                        disabled={lease.status !== 'complete'}
-                      >
-                        View Analysis
-                      </Button>
-                    </CardActions>
-                  </Card>
-                </Grid>
-              </Fade>
-            ))}
-          </Grid>
-        )}
-      </Container>
-    );
-  }
-
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4, textAlign: 'center' }}>
-      <Alert severity="error">Unknown subscription status. Please contact support.</Alert>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {profile.subscriptionTier === 'free' && (
+         <Alert 
+            severity="info" 
+            action={
+               <Button 
+                 color="primary" 
+                 size="small" 
+                 onClick={() => navigate('/pricing')}
+                 startIcon={<UpgradeIcon />}
+               >
+                  Upgrade to Pro
+               </Button>
+            }
+            sx={{ mb: 3, '.MuiAlert-message': { width: '100%'} }}
+         >
+           You are on the Free Trial. 
+           <Typography variant="body2" component="span" sx={{ fontWeight: 'bold'}}>
+              {Math.max(0, 3 - (profile.freeScansUsed || 0))} analysis scans remaining.
+           </Typography>
+         </Alert>
+      )}
+
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          p: { xs: 2, md: 3 },
+          mb: 4, 
+          bgcolor: 'primary.lighter',
+          borderRadius: 2,
+          border: '1px solid', 
+          borderColor: 'divider'
+        }}
+      >
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Welcome, {user?.email || 'User'}! 
+            </Typography>
+          </Grid>
+          <Grid item xs={12} sm="auto" sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
+            <Button 
+              variant="contained" 
+              size="large"
+              startIcon={<Add />}
+              onClick={() => navigate('/analysis')}
+              sx={{ borderRadius: 8 }}
+            >
+              Analyze New Lease
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={4}>
+            <Card variant="outlined">
+                <CardContent>
+                    <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
+                       Total Analyses
+                    </Typography>
+                    <Typography variant="h5" component="div">
+                       {stats.totalAnalyses}
+                    </Typography>
+                </CardContent>
+            </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={4}>
+             <Card variant="outlined">
+                <CardContent>
+                    <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
+                       Last Analysis
+                    </Typography>
+                    <Typography variant="h5" component="div">
+                       {formatLastAnalysisDate(stats.lastAnalysisDate)}
+                    </Typography>
+                </CardContent>
+            </Card>
+        </Grid>
+      </Grid>
+
+      <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
+        My Lease Analyses
+      </Typography>
+      
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+      {leases.length === 0 && !error && (
+         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
+             <Typography variant="h6" gutterBottom>No analyses yet!</Typography>
+             <Typography color="text.secondary" sx={{ mb: 2 }}>
+               Click "Analyze New Lease" to get started.
+             </Typography>
+             <Button 
+               variant="contained" 
+               startIcon={<Add />}
+               onClick={() => navigate('/analysis')}
+             >
+               Analyze New Lease
+             </Button>
+         </Paper>
+      )}
+      
+      {leases.length > 0 && (
+        <Grid container spacing={3}>
+          {leases.map((lease) => (
+            <Fade in timeout={500} key={lease.id}>
+              <Grid item xs={12} md={6} lg={4}>
+                <Card 
+                  variant="outlined"
+                  sx={{
+                    borderLeft: `4px solid ${lease.status === 'complete' ? getScoreColor(lease.analysis?.score) : 'grey.300'}`
+                  }}
+                >
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                       <Tooltip title={lease.fileName || 'No Filename'} placement="top-start">
+                         <Typography 
+                            variant="h6" 
+                            noWrap
+                            sx={{ fontWeight: 500, maxWidth: '80%' }}
+                         >
+                           {lease.fileName || 'Untitled Analysis'}
+                         </Typography>
+                       </Tooltip>
+                        {lease.status === 'complete' && lease.analysis?.score !== undefined && (
+                            <Tooltip title={`Risk Score: ${lease.analysis.score}/100`}>
+                               {getScoreSeverityChip(lease.analysis.score)}
+                            </Tooltip>
+                        )}
+                        {lease.status === 'error' && (
+                            <Tooltip title="Analysis encountered an error">
+                                <Chip icon={<Warning />} label="Error" color="error" size="small" />
+                            </Tooltip>
+                        )}
+                         {lease.status === 'pending' && (
+                            <Tooltip title="Analysis in progress...">
+                                 <Chip icon={<CircularProgress size={14}/>} label="Processing" color="info" size="small" />
+                            </Tooltip>
+                        )}
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {lease.createdAt instanceof Timestamp ? formatDistanceToNow(lease.createdAt.toDate(), { addSuffix: true }) : (lease.createdAt ? formatDistanceToNow(new Date(lease.createdAt), { addSuffix: true }) : 'Unknown date')}
+                      </Typography>
+                       {getStatusChip(lease.status)}
+                    </Box>
+                  </CardContent>
+                  <Divider />
+                  <CardActions sx={{ justifyContent: 'space-between' }}>
+                     <Tooltip title="Delete Analysis">
+                       <IconButton 
+                          size="small" 
+                          color="error"
+                          onClick={() => handleDeleteLease(lease.id)} 
+                       >
+                          <DeleteIcon fontSize="small" />
+                       </IconButton>
+                     </Tooltip>
+                    <Button 
+                      size="small" 
+                      variant="contained"
+                      onClick={() => navigate(`/analysis/${lease.id}`)}
+                      disabled={lease.status !== 'complete'}
+                    >
+                      View Analysis
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            </Fade>
+          ))}
+        </Grid>
+      )}
     </Container>
   );
 };
