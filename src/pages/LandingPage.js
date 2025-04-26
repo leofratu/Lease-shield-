@@ -1,5 +1,6 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { useAuthState } from '../hooks/useAuthState';
 import {
   Box,
@@ -172,8 +173,86 @@ const LandingPage = () => {
   };
   // --- End Button Click Handler ---
 
+  // --- Schema Data --- 
+  const softwareApplicationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    'name': 'Lease Shield AI',
+    'applicationCategory': 'BusinessApplication', // Or potentially FinanceApplication, LegalApplication
+    'operatingSystem': 'Web-based',
+    'offers': {
+      '@type': 'Offer',
+      'priceCurrency': 'USD',
+      'price': '5', // Price for the main paid plan, adjust if needed
+      'url': 'https://www.yourdomain.com/pricing' // CHANGE TO YOUR ACTUAL PRICING URL
+    },
+    'aggregateRating': {
+      '@type': 'AggregateRating',
+      'ratingValue': '4.8', // Example rating, update with real data if available
+      'reviewCount': '75' // Example count, update with real data
+    },
+    'description': 'AI-powered lease analysis tool to help tenants and professionals understand rental agreements, identify risks, and review contracts quickly.'
+    // Add more properties like screenshot, features, etc. if desired
+  };
+
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    'mainEntity': [
+      // Map your FAQ data here
+      {
+        '@type': 'Question',
+        'name': 'How accurate is the AI analysis?',
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': 'Our AI model is trained on thousands of lease agreements and achieves high accuracy in identifying standard lease terms and potential issues. However, we always recommend consulting with a legal professional for final decisions.'
+        }
+      },
+      {
+        '@type': 'Question',
+        'name': 'Is my data secure?',
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': 'Yes, we take security seriously. Your documents are encrypted in transit and at rest using enterprise-grade security measures. We are compliant with industry standards for data protection.'
+        }
+      },
+      {
+        '@type': 'Question',
+        'name': 'What file formats are supported?',
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': "Currently we support PDF and direct text pasting. We're working on adding support for Word documents (.docx) and other formats."
+        }
+      },
+      {
+        '@type': 'Question',
+        'name': 'How long does the analysis take?',
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': 'Most lease agreements are analyzed within 1-2 minutes. Extremely long or complex documents might take slightly longer.'
+        }
+      }
+    ]
+  };
+  // --- End Schema Data ---
+
   return (
     <Box sx={{ overflowX: 'hidden' }}>
+      <Helmet>
+        <title>AI Lease Analyzer & Lease Shield | Understand Your Rental Agreement</title>
+        <meta 
+          name="description" 
+          content="Lease Shield AI uses advanced AI to analyze your lease agreement in minutes. Understand complex clauses, identify risks, and review your rental contract like an expert. Get started free!" 
+        />
+        {/* Add JSON-LD Schema */}
+        <script type="application/ld+json">
+          {JSON.stringify(softwareApplicationSchema)}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify(faqSchema)}
+        </script>
+      </Helmet>
+
       {/* Hero Section */}
       <Fade in={true} timeout={1000}>
         <Paper

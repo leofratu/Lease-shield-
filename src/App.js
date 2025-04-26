@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { useAuthState } from './hooks/useAuthState';
 import { useUserProfile } from './context/UserProfileContext';
+import ReactGA from 'react-ga4';
 
 // Pages
 import Login from './pages/Login';
@@ -18,6 +19,12 @@ import LandingPage from './pages/LandingPage';
 import Profile from './pages/Profile';
 import Pricing from './pages/Pricing';
 import TrialPage from './pages/TrialPage';
+import BlogIndexPage from './pages/blog/BlogIndexPage';
+import HowToSpotLeaseScams from './pages/blog/HowToSpotLeaseScams';
+import UnderstandingCommonClauses from './pages/blog/UnderstandingCommonClauses';
+import NegotiatingLeaseTerms from './pages/blog/NegotiatingLeaseTerms';
+import LeaseRedFlags from './pages/blog/LeaseRedFlags';
+import TenantRightsOverview from './pages/blog/TenantRightsOverview';
 
 // Create theme
 const theme = createTheme({
@@ -112,6 +119,27 @@ const TrialRouteHandler = () => {
   );
 };
 
+// --- Initialize Google Analytics --- 
+const MEASUREMENT_ID = "G-Z9S1H13X0T"; // Your Measurement ID
+ReactGA.initialize(MEASUREMENT_ID);
+console.log("Google Analytics Initialized with ID:", MEASUREMENT_ID);
+// --- End GA Init ---
+
+// --- Component to Track Route Changes --- 
+const RouteChangeTracker = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Send pageview with path and title
+    const pagePath = location.pathname + location.search;
+    ReactGA.send({ hitType: "pageview", page: pagePath, title: document.title });
+    console.log(`GA Pageview Sent: ${pagePath}`);
+  }, [location]);
+
+  return null; // This component does not render anything
+};
+// --- End Route Change Tracker ---
+
 function App() {
 
   // --- Backend Pinger --- 
@@ -151,6 +179,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
+        <RouteChangeTracker />
         <Routes>
           {/* Public routes */}
           <Route path="/" element={
@@ -166,6 +195,39 @@ function App() {
              </Layout>
           } />
           <Route path="/trial" element={<TrialRouteHandler />} />
+          
+          {/* Public Blog Routes */}
+          <Route path="/blog" element={
+            <Layout showAuthButtons={true}>
+              <BlogIndexPage />
+            </Layout>
+          } />
+          <Route path="/blog/how-to-spot-lease-scams" element={
+            <Layout showAuthButtons={true}>
+              <HowToSpotLeaseScams />
+            </Layout>
+          } />
+           <Route path="/blog/understanding-common-clauses" element={
+            <Layout showAuthButtons={true}>
+              <UnderstandingCommonClauses />
+            </Layout>
+          } />
+           <Route path="/blog/negotiating-lease-terms" element={
+            <Layout showAuthButtons={true}>
+              <NegotiatingLeaseTerms />
+            </Layout>
+          } />
+           <Route path="/blog/lease-red-flags" element={
+            <Layout showAuthButtons={true}>
+              <LeaseRedFlags />
+            </Layout>
+          } />
+           <Route path="/blog/tenant-rights-overview" element={
+            <Layout showAuthButtons={true}>
+              <TenantRightsOverview />
+            </Layout>
+          } />
+          {/* END Public Blog Routes */}
           
           {/* Protected routes */}
           <Route path="/dashboard" element={

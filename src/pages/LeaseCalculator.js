@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import {
   Box,
   Typography,
@@ -18,7 +19,7 @@ import {
 } from '@mui/material';
 import { CalculateOutlined } from '@mui/icons-material';
 
-const LeaseCalculator = () => {
+const LeaseCalculator = ({ showSnackbar }) => {
   const [calculatorType, setCalculatorType] = useState('rent');
   const [monthlyRent, setMonthlyRent] = useState('');
   const [securityDeposit, setSecurityDeposit] = useState('');
@@ -326,6 +327,13 @@ const LeaseCalculator = () => {
 
   return (
     <Box>
+      <Helmet>
+        <title>Lease Calculators | Rent, Prorated Rent, Deposit | Lease Shield AI</title>
+        <meta 
+          name="description" 
+          content="Calculate monthly/annual rent, prorated rent for move-in, and security deposit percentages with Lease Shield AI's free lease calculators." 
+        />
+      </Helmet>
       <Typography variant="h4" component="h1" gutterBottom>
         Lease Calculator
       </Typography>

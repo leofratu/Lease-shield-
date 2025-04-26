@@ -4,6 +4,8 @@ import CheckIcon from '@mui/icons-material/Check';
 import StarIcon from '@mui/icons-material/Star';
 import { useNavigate } from 'react-router-dom';
 import { useAuthState } from '../hooks/useAuthState';
+import { Helmet } from 'react-helmet-async';
+import { initiateCheckout } from '../utils/paymentUtils';
 
 // Function that calls the backend to start Maxelpay checkout
 const initiateCheckout = async (token) => {
@@ -80,8 +82,16 @@ const Pricing = ({ showSnackbar }) => {
   };
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h3" component="h1" align="center" gutterBottom sx={{ fontWeight: 700, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
+      <Helmet>
+        <title>Pricing Plans | Lease Shield AI Lease Analyzer</title>
+        <meta 
+          name="description" 
+          content="Choose the right Lease Shield AI plan. Analyze leases with our Free Trial or upgrade to Pro for unlimited analysis and advanced features." 
+        />
+      </Helmet>
+
+      <Typography variant="h2" component="h1" gutterBottom sx={{ textAlign: 'center', mb: 6 }}>
         Choose Your Plan
       </Typography>
       

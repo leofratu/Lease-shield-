@@ -23,7 +23,8 @@ import {
   MenuItem,
   Snackbar,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Link as MuiLink
 } from '@mui/material';
 import { 
   Menu as MenuIcon, 
@@ -252,6 +253,7 @@ const Layout = ({ children, showAuthButtons = false }) => {
               <Link href="#" color="inherit" underline="hover">Privacy</Link>
               <Link href="#" color="inherit" underline="hover">Terms</Link>
               <Link href="#" color="inherit" underline="hover">Contact</Link>
+              <MuiLink component={RouterLink} to="/blog" color="inherit" underline="hover">Blog</MuiLink>
             </Box>
           </Box>
         </Container>
