@@ -85,7 +85,14 @@ const AdminPage = () => {
     // Effect to check admin status and fetch initial data
     useEffect(() => {
         if (!authLoading) {
-            if (user && user.email === 'leofratu@gmail.com') {
+            // Log the user object to inspect its contents
+            console.log('Auth state loaded. User object:', user);
+            
+            // Check if user exists and email matches (case-insensitive)
+            const isAdminUser = user && user.email?.toLowerCase() === 'leofratu@gmail.com';
+            console.log(`Checking admin status: User email is ${user?.email}, isAdminUser = ${isAdminUser}`);
+            
+            if (isAdminUser) {
                 setIsAdmin(true);
                 loadUsers(); // Load users when admin status is confirmed
             } else {
@@ -93,9 +100,10 @@ const AdminPage = () => {
                 setIsLoadingUsers(false); // No data to load if not admin
             }
         } else {
+            console.log('Auth state still loading...');
             setIsLoadingUsers(true); // Still loading auth state
         }
-    }, [user, authLoading, loadUsers]); // Include loadUsers in dependency array
+    }, [user, authLoading, loadUsers]);
 
     // --- Form Handlers ---
     const handleSetScansSubmit = async (e) => {
