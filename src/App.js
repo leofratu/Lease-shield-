@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -117,6 +117,40 @@ const TrialRouteHandler = () => {
 };
 
 function App() {
+
+  // --- Backend Pinger --- 
+  useEffect(() => {
+    const pingBackend = async () => {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
+      if (!apiUrl || apiUrl === 'http://localhost:8081') {
+        // Don't ping if no deployed URL or if it's just localhost
+        // console.log('Skipping backend ping for local development.');
+        return; 
+      }
+      try {
+        const response = await fetch(`${apiUrl}/api/ping`);
+        if (response.ok) {
+          // console.log('Backend ping successful');
+        } else {
+          console.warn('Backend ping failed:', response.status);
+        }
+      } catch (error) {
+        console.error('Error pinging backend:', error);
+      }
+    };
+
+    // Ping immediately on load (optional, helps wake it up initially)
+    // pingBackend(); 
+
+    // Set interval to ping every 7 minutes (420000 milliseconds)
+    const intervalId = setInterval(pingBackend, 7 * 60 * 1000);
+
+    // Cleanup function to clear the interval when the component unmounts
+    return () => clearInterval(intervalId);
+
+  }, []); // Empty dependency array ensures this runs only once on mount
+  // --- End Backend Pinger ---
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />

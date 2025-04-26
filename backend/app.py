@@ -1,6 +1,6 @@
 import os
 import json
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import google.generativeai as genai
 import firebase_admin
@@ -280,6 +280,14 @@ def increment_free_scan_count(user_id):
         print(f"Error incrementing scan count for {user_id}: {e}")
         return False
 # --- End Firestore User Helpers --- 
+
+# --- Ping Endpoint --- 
+@app.route('/api/ping', methods=['GET'])
+def ping():
+    """Simple endpoint to keep the backend alive."""
+    # No auth needed, just return success
+    return jsonify({'status': 'pong'}), 200
+# --- End Ping Endpoint ---
 
 # --- Maxelpay Checkout Route ---
 @app.route('/api/payid/create-checkout-session', methods=['POST']) # Keep route name consistent with frontend for now
