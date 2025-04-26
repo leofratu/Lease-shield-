@@ -238,8 +238,17 @@ const Dashboard = ({ showSnackbar }) => {
       </Container>
     );
   }
-  
-  if (profile && profile.subscriptionTier === 'free') {
+
+  if (!profile) {
+    console.warn("Dashboard: Profile not available after loading.");
+    return (
+      <Container maxWidth="md" sx={{ mt: 4, mb: 4, textAlign: 'center' }}>
+        <Alert severity="warning">Could not load user profile data. Please try refreshing.</Alert>
+      </Container>
+    );
+  }
+
+  if (profile.subscriptionTier === 'free') {
     return (
       <Container maxWidth="md" sx={{ mt: 4, mb: 4, textAlign: 'center' }}>
           <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
@@ -306,7 +315,7 @@ const Dashboard = ({ showSnackbar }) => {
     );
   }
 
-  if (!profile || profile.subscriptionTier === 'paid') {
+  if (profile.subscriptionTier === 'paid') {
     return (
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Paper 
@@ -473,7 +482,11 @@ const Dashboard = ({ showSnackbar }) => {
     );
   }
 
-  return <Typography>Loading dashboard...</Typography>; 
+  return (
+    <Container maxWidth="md" sx={{ mt: 4, mb: 4, textAlign: 'center' }}>
+      <Alert severity="error">Unknown subscription status. Please contact support.</Alert>
+    </Container>
+  );
 };
 
 export default Dashboard; 

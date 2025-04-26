@@ -71,25 +71,21 @@ const ProtectedRoute = ({ children, requirePaid = false }) => {
   const { user, loading: authLoading } = useAuthState();
   const { profile, loadingProfile } = useUserProfile() || { profile: null, loadingProfile: true };
 
-  if (authLoading || (requirePaid && loadingProfile)) {
-    // Show loading indicator if auth is loading, OR
-    // if paid is required and profile is still loading
+  if (authLoading || loadingProfile) {
     return <div>Loading...</div>;
   }
 
   if (!user) {
-    // Not logged in, redirect to login
     return <Navigate to="/login" />;
   }
 
-  if (requirePaid && (!profile || profile.subscriptionTier !== 'paid')) {
-    // Logged in, but requires paid subscription and user doesn't have it
-    console.log("Access denied: Paid subscription required.");
-    // Redirect to pricing page or a specific "upgrade required" page
-    return <Navigate to="/pricing" replace />;
+  if (requirePaid) {
+    if (!profile || profile.subscriptionTier !== 'paid') {
+      console.log("Access denied: Paid subscription required or profile not loaded.");
+      return <Navigate to="/pricing" replace />;
+    }
   }
 
-  // Logged in and meets subscription requirements (if any)
   return children;
 };
 
