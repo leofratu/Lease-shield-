@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { 
   Typography, 
   Box, 
@@ -429,6 +430,11 @@ const LeaseAnalysis = ({ showSnackbar }) => {
   
   return (
     <Box>
+      <Helmet>
+        <title>{lease ? `Analysis: ${lease.fileName}` : 'Analyze Your Lease'} - Lease Shield AI</title>
+        <meta name="description" content="Upload or paste your lease agreement text to analyze potential risks, understand key clauses, check for fairness, and get a tenant-friendliness score with Lease Shield AI." />
+        <meta name="keywords" content="lease analysis, lease scanner, rental agreement review, tenant rights, landlord negotiation, lease risk assessment, lease agreement checker, apartment lease review, contract analysis" />
+      </Helmet>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Typography variant="h4" component="h1">
           Lease Analyzer {lease ? `- ${lease.fileName}` : ''}
