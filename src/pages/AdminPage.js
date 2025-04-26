@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext'; // Assuming AuthContext provides user info
+import { useAuthState } from '../hooks/useAuthState'; // Correct path to the hook
 import { Navigate } from 'react-router-dom'; // For redirecting if not admin
 
 // Placeholder for API functions - replace with actual implementation
@@ -8,7 +8,7 @@ const setAdminUserScans = async (token, userId, limit) => { console.log(`Setting
 const createAdminCommercialUser = async (token, email, password, limit) => { console.log(`Creating commercial user ${email} with limit ${limit}`); return { success: true, userId: 'newUserId123' }; };
 
 const AdminPage = () => {
-    const { user, loading, getIdToken } = useAuth();
+    const { user, loading } = useAuthState();
     const [isAdmin, setIsAdmin] = useState(false);
     const [users, setUsers] = useState([]);
     const [isLoadingData, setIsLoadingData] = useState(true);
@@ -21,8 +21,13 @@ const AdminPage = () => {
                 setIsAdmin(true);
                 // Fetch admin data if user is admin
                 const fetchData = async () => {
+                    if (!user) {
+                        setError('User not available to fetch token.');
+                        setIsLoadingData(false);
+                        return;
+                    }
                     try {
-                        const token = await getIdToken();
+                        const token = await user.getIdToken();
                         if (!token) throw new Error('Could not get auth token.');
                         
                         setError(''); // Clear previous errors
@@ -46,13 +51,16 @@ const AdminPage = () => {
                 setIsAdmin(false);
                 setIsLoadingData(false); // No data to load
             }
+        } else {
+            // Still loading auth state, ensure data loading state reflects this
+            setIsLoadingData(true);
         }
-    }, [user, loading, getIdToken]);
+    }, [user, loading]);
 
     // --- Render Logic ---
 
-    // Show loading state while checking auth
-    if (loading) {
+    // Show loading state while checking auth OR loading initial admin data
+    if (loading || (isAdmin && isLoadingData)) {
         return <div className="container mx-auto p-4 text-center">Loading...</div>;
     }
 
