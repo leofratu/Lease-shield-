@@ -183,7 +183,7 @@ const LandingPage = () => {
             mb: { xs: 6, md: 10 },
             background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
             color: 'white',
-            borderRadius: '0 0 30px 30px',
+            borderRadius: '30px',
           }}
         >
           <Container maxWidth="lg">
