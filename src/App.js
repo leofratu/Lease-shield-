@@ -169,7 +169,7 @@ function App() {
           
           {/* Protected routes */}
           <Route path="/dashboard" element={
-            <ProtectedRoute requirePaid={true}>
+            <ProtectedRoute>
               <Layout>
                 <Dashboard />
               </Layout>

@@ -29,7 +29,15 @@ import {
   DialogActions,
   Rating,
   Stack,
-  Container
+  Container,
+  Switch,
+  FormControlLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import { 
   ExpandMore,
@@ -51,6 +59,7 @@ import {
 import { motion } from 'framer-motion';
 import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
+import { Link } from 'react-router-dom';
 
 // Helper function for score bar color
 const getScoreColor = (score) => {
@@ -66,7 +75,7 @@ const LeaseAnalysis = ({ showSnackbar }) => {
   const [loading, setLoading] = useState(!!leaseId);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState(null);
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [score, setScore] = useState(0);
@@ -74,6 +83,12 @@ const LeaseAnalysis = ({ showSnackbar }) => {
   const [emailDraft, setEmailDraft] = useState('');
   const [textContent, setTextContent] = useState('');
   
+  // State for multi-analysis mode
+  const [isMultiMode, setIsMultiMode] = useState(false);
+  const [multiAnalysisResults, setMultiAnalysisResults] = useState([]);
+  const [multiAnalysisProgress, setMultiAnalysisProgress] = useState({});
+  const [currentMultiAnalysisIndex, setCurrentMultiAnalysisIndex] = useState(0);
+
   // Use Snackbar
   const displayError = (message) => {
     setError(message); // Keep Alert for prominent errors
@@ -101,8 +116,12 @@ const LeaseAnalysis = ({ showSnackbar }) => {
         setError(null);
         setAnalyzing(false);
         setAnalysisProgress(0);
-        setFile(null);
+        setFiles([]);
         setTextContent('');
+        setIsMultiMode(false);
+        setMultiAnalysisResults([]);
+        setMultiAnalysisProgress({});
+        setCurrentMultiAnalysisIndex(0);
         setLoading(false); // Ensure loading is false if no leaseId
     }
   }, [leaseId]);
@@ -141,9 +160,48 @@ const LeaseAnalysis = ({ showSnackbar }) => {
   };
   
   const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      setFile(selectedFile);
+    setError(null); // Clear previous errors
+    const selectedFiles = e.target.files;
+
+    if (!selectedFiles || selectedFiles.length === 0) {
+      setFiles([]);
+      return;
+    }
+
+    if (isMultiMode) {
+      let fileList = Array.from(selectedFiles);
+
+      if (fileList.length > 5) {
+        displayError('You can upload a maximum of 5 files at a time.');
+        fileList = fileList.slice(0, 5); // Limit to 5 files
+      }
+
+      const validFiles = fileList.filter(file => {
+        const isValid = file.type === 'application/pdf' || file.type === 'text/plain';
+        if (!isValid) {
+          displayError(`Invalid file type: ${file.name}. Only PDF and TXT are allowed.`);
+        }
+        return isValid;
+      });
+
+      setFiles(validFiles);
+      if (validFiles.length < fileList.length) {
+         displayInfo(`Removed ${fileList.length - validFiles.length} unsupported files.`);
+      }
+
+    } else {
+      // Single file mode
+      const selectedFile = selectedFiles[0];
+      if (selectedFile) {
+        if (selectedFile.type !== 'application/pdf' && selectedFile.type !== 'text/plain') {
+           displayError('Invalid file type. Only PDF and TXT are allowed.');
+           setFiles([]); // Clear selection
+        } else {
+           setFiles([selectedFile]); // Store as an array with one element
+        }
+      } else {
+        setFiles([]);
+      }
     }
   };
   
@@ -151,129 +209,227 @@ const LeaseAnalysis = ({ showSnackbar }) => {
     setTextContent(e.target.value);
   };
   
-  const runAnalysis = async (type, data) => {
-    // Common analysis logic combining text and file upload
-    try {
-      setAnalyzing(true);
-      setAnalysisProgress(0); // Start at 0
-      setError(null);
-      setAnalysisResult(null);
-      setScore(0);
-      displayInfo('Starting analysis... This usually takes 1-2 minutes.');
+  // Refactored: Processes a single analysis task (file or text)
+  // Returns: { success: true, analysis: object, score: number, leaseId: string | null } or { success: false, error: string }
+  const runSingleAnalysis = async (type, data, fileName = null) => {
+    // Reset single-analysis specific states
+    setAnalysisProgress(0); 
+    setError(null);
+    setAnalysisResult(null);
+    setScore(0);
 
-      let progress = 0;
-      // Simulate progress over ~70 seconds to reach 90%
-      // Update every 700ms, increment by 1 -> 100 steps * 700ms = 70 seconds
-      const progressTimer = setInterval(() => {
-        progress += 1;
-        setAnalysisProgress(progress);
-        if (progress >= 90) {
-            clearInterval(progressTimer);
-          }
-      }, 700);
-      
+    // Simulate progress (can be made more sophisticated for multi-mode later)
+    let progress = 0;
+    const progressTimer = setInterval(() => {
+      progress = Math.min(progress + 5, 90); // Simulate faster progress, stop at 90%
+      setAnalysisProgress(progress);
+    }, 500);
+
+    try {
       const user = auth.currentUser;
       if (!user) {
         throw new Error('User not authenticated');
       }
-      
+
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
       const token = await user.getIdToken();
       let response;
-      
+
       if (type === 'text') {
-        response = await fetch(`${apiUrl}/api/analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ text: data })
-        });
-      } else if (type === 'file') {
-        const formData = new FormData();
-        formData.append('leaseFile', data);
         response = await fetch(`${apiUrl}/api/analyze`, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${token}`
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           },
-          body: formData
+          body: JSON.stringify({ text: data }),
+        });
+      } else if (type === 'file') {
+        const formData = new FormData();
+        formData.append('leaseFile', data, fileName); // Pass filename
+        response = await fetch(`${apiUrl}/api/analyze`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
         });
       } else {
         throw new Error('Invalid analysis type');
       }
 
-      clearInterval(progressTimer); // Stop simulation once backend responds
+      clearInterval(progressTimer);
       setAnalysisProgress(95); // Indicate backend processing done
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: `Analysis failed with status: ${response.status}` }));
-        if (response.status === 402 && errorData.upgradeRequired) {
-           setError(errorData.error);
-           if (showSnackbar) showSnackbar(errorData.error, 'warning');
-           navigate('/pricing');
-        } else {
-          throw new Error(errorData.error || 'Failed to analyze lease');
-        }
-        setAnalysisProgress(0); // Reset on error
-        return; 
+         if (response.status === 402 && errorData.upgradeRequired) {
+            // Specific handling for upgrade required - maybe navigate globally?
+            // For now, return as error to be handled by caller
+            return { success: false, error: errorData.error, upgradeRequired: true }; 
+         } else {
+           throw new Error(errorData.error || 'Failed to analyze lease');
+         }
       }
-      
+
       const result = await response.json();
 
       if (!result.success || !result.analysis) {
-         throw new Error(result.error || 'Analysis failed to return expected data.');
+        throw new Error(result.error || 'Analysis failed to return expected data.');
       }
-      
-      setAnalysisResult(result.analysis);
-      
+
       // Calculate score
+      let calculatedScore = 0;
       if (result.analysis.score !== undefined) {
-        setScore(result.analysis.score);
+        calculatedScore = result.analysis.score;
       } else if (result.analysis.risks) {
         const riskCount = result.analysis.risks.length;
-        const calculatedScore = Math.max(0, 100 - (riskCount * 10));
-        setScore(calculatedScore);
+        calculatedScore = Math.max(0, 100 - (riskCount * 10));
       }
       
-      setAnalysisProgress(100); // Complete
+      setAnalysisProgress(100);
+      
+      // Return success object
+      return {
+         success: true,
+         analysis: result.analysis,
+         score: calculatedScore,
+         leaseId: result.leaseId || null // Include leaseId if returned
+      };
 
-      if (result.leaseId) {
-        displaySuccess('Analysis complete and saved!');
-        navigate(`/analysis/${result.leaseId}`);
-      } else {
-         console.warn("Analysis complete but no new lease ID returned from backend (save likely failed).");
-         displayInfo('Analysis complete, but failed to save to your dashboard.');
-      }
-      
     } catch (err) {
+      clearInterval(progressTimer);
+      setAnalysisProgress(0);
       console.error('Analysis error:', err);
-      displayError(`Failed analysis: ${err.message}`);
-      setAnalysisProgress(0); // Reset progress on error
+      // Return error object
+      return { success: false, error: err.message };
     } finally {
-      setAnalyzing(false);
+      // Note: setAnalyzing(false) should be handled by the calling function (handleUpload/handleMultiUpload)
     }
   };
-  
-  const handleAnalyzeText = () => {
+
+  const handleAnalyzeText = async () => {
     if (!textContent.trim()) {
       displayError('Please enter lease text to analyze');
       return;
     }
-    runAnalysis('text', textContent);
+    setAnalyzing(true);
+    setError(null);
+    displayInfo('Starting text analysis...');
+    
+    const result = await runSingleAnalysis('text', textContent);
+    
+    if (result.success) {
+       setAnalysisResult(result.analysis);
+       setScore(result.score);
+       displaySuccess('Text analysis complete!');
+       if (result.leaseId) {
+          // Navigate only if a leaseId was successfully returned (meaning it was saved)
+          navigate(`/analysis/${result.leaseId}`);
+       } else {
+          displayInfo('Analysis complete. Consider saving manually if needed.'); // Or implement save button
+       }
+    } else {
+      displayError(`Text analysis failed: ${result.error}`);
+      if (result.upgradeRequired) {
+         navigate('/pricing'); // Navigate if upgrade required
+      }
+    }
+    setAnalyzing(false);
   };
-  
-  const handleUpload = () => {
-    if (!file) {
+
+  // Handles single file upload button click
+  const handleSingleUpload = async () => {
+    if (!files.length) {
       displayError('Please select a file to upload');
       return;
     }
-    if (file.type !== 'application/pdf' && file.type !== 'text/plain') {
-      displayError('Please select a PDF or text file');
-      return;
+    const fileToUpload = files[0];
+    
+    setAnalyzing(true);
+    setError(null);
+    displayInfo(`Starting analysis for ${fileToUpload.name}...`);
+    
+    const result = await runSingleAnalysis('file', fileToUpload, fileToUpload.name);
+    
+    if (result.success) {
+      setAnalysisResult(result.analysis);
+      setScore(result.score);
+      displaySuccess(`Analysis complete for ${fileToUpload.name}!`);
+      if (result.leaseId) {
+         navigate(`/analysis/${result.leaseId}`);
+      } else {
+         displayInfo('Analysis complete. Consider saving manually if needed.');
+      }
+    } else {
+      displayError(`Analysis failed for ${fileToUpload.name}: ${result.error}`);
+      if (result.upgradeRequired) {
+         navigate('/pricing'); 
+      }
     }
-    runAnalysis('file', file);
+    setAnalyzing(false);
+  };
+  
+  // Handles multi-file upload button click
+  const handleMultiUpload = async () => {
+     if (!files.length) {
+        displayError('Please select files to upload');
+        return;
+     }
+     
+     setAnalyzing(true);
+     setError(null);
+     setMultiAnalysisResults([]); // Clear previous multi results
+     setMultiAnalysisProgress({}); // Clear previous progress
+     setCurrentMultiAnalysisIndex(0);
+     displayInfo(`Starting analysis for ${files.length} files...`);
+     
+     const results = [];
+     for (let i = 0; i < files.length; i++) {
+        const fileToUpload = files[i];
+        setCurrentMultiAnalysisIndex(i);
+        setMultiAnalysisProgress(prev => ({ ...prev, [fileToUpload.name]: 0 })); // Initialize progress for file
+        displayInfo(`Analyzing file ${i + 1} of ${files.length}: ${fileToUpload.name}`);
+        
+        // Run analysis for the current file
+        // We pass a callback to update progress specifically for this file
+        const result = await runSingleAnalysis('file', fileToUpload, fileToUpload.name);
+
+        // Store result (success or failure)
+        results.push({ 
+           fileName: fileToUpload.name, 
+           ...(result.success 
+              ? { status: 'Complete', analysis: result.analysis, score: result.score, leaseId: result.leaseId } 
+              : { status: 'Error', error: result.error, upgradeRequired: result.upgradeRequired })
+        });
+
+        // Update overall state with the results accumulated so far
+        setMultiAnalysisResults([...results]);
+
+        // Optional: Handle upgrade required immediately
+        if (!result.success && result.upgradeRequired) {
+           displayError(`Analysis stopped: ${result.error}. Please upgrade your plan.`);
+           navigate('/pricing');
+           setAnalyzing(false); // Stop the loop
+           return; 
+        }
+        
+         // Stop if a non-upgrade error occurred (optional, could continue)
+         // if (!result.success) {
+         //    displayError(`Error analyzing ${fileToUpload.name}. Stopping further analysis.`);
+         //    break; 
+         // }
+     }
+     
+     displaySuccess(`Finished analyzing ${files.length} files.`);
+     setAnalyzing(false);
+     setCurrentMultiAnalysisIndex(0); // Reset index
+  };
+  
+  const handleCopyEmail = () => {
+    if (!emailDraft) return;
+    navigator.clipboard.writeText(emailDraft);
+    displaySuccess('Email draft copied to clipboard!');
   };
   
   const generateEmailDraft = async () => {
@@ -309,11 +465,6 @@ const LeaseAnalysis = ({ showSnackbar }) => {
     }
   };
   
-  const handleCopyEmail = () => {
-    navigator.clipboard.writeText(emailDraft);
-    displaySuccess('Email draft copied to clipboard!');
-  };
-
   // --- Download JSON Handler --- 
   const handleDownloadJson = () => {
     if (!analysisResult) {
@@ -345,9 +496,13 @@ const LeaseAnalysis = ({ showSnackbar }) => {
     setAnalysisResult(null);
     setScore(0);
     setError(null);
-    setFile(null);
+    setFiles([]);
     setTextContent('');
     setAnalysisProgress(0);
+    setIsMultiMode(false);
+    setMultiAnalysisResults([]);
+    setMultiAnalysisProgress({});
+    setCurrentMultiAnalysisIndex(0);
     // Clear the specific lease ID if we navigated here from dashboard
     if (leaseId) {
         navigate('/analysis', { replace: true }); // Navigate to base analysis route
@@ -529,8 +684,27 @@ const LeaseAnalysis = ({ showSnackbar }) => {
                 handleAnalyzeAnother={handleAnalyzeAnother}
              />
              {/* ... Email Dialog ... */}
-             <Dialog open={emailDialogOpen} onClose={() => setEmailDialogOpen(false)} maxWidth="md" fullWidth>
-                {/* ... existing Dialog content ... */}
+             <Dialog open={emailDialogOpen} onClose={() => setEmailDialogOpen(false)} fullWidth maxWidth="md">
+                <DialogTitle>Generated Email Draft</DialogTitle>
+                <DialogContent>
+                   <DialogContentText sx={{ mb: 2 }}>
+                      Review and copy the draft email below to send to your landlord. Remember to replace '[Your Name]' and customize as needed.
+                   </DialogContentText>
+                   <TextField
+                      fullWidth
+                      multiline
+                      rows={15}
+                      value={emailDraft}
+                      onChange={(e) => setEmailDraft(e.target.value)}
+                      variant="outlined"
+                   />
+                </DialogContent>
+                <DialogActions>
+                   <Button onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
+                   <Button onClick={handleCopyEmail} variant="contained" startIcon={<Email />}>
+                      Copy Draft
+                   </Button>
+                </DialogActions>
              </Dialog>
          </Container>
     );
@@ -541,108 +715,312 @@ const LeaseAnalysis = ({ showSnackbar }) => {
   return (
     <Container maxWidth="lg" sx={{ mt: 2, mb: 4 }}>
         <Helmet>
-            <title>Lease Analysis - Lease Shield AI</title>
-            <meta name="description" content="Upload or paste your lease document for AI-powered analysis." />
+            <title>{leaseId ? `Lease Analysis - ${lease?.fileName || leaseId}` : 'New Lease Analysis'} | Lease Shield AI</title>
+            <meta name="description" content={leaseId ? `Review the AI analysis results for lease ${lease?.fileName || leaseId}.` : "Upload or paste your lease document for AI analysis."} />
         </Helmet>
-        <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 3 }}>
-          Analyze New Lease
-        </Typography>
-        
-        {/* Display general errors for analysis submission */}
-        {error && !leaseId && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-        <Grid container spacing={4}>
-          {/* Upload Section */}
+      
+      {/* Back Button */} 
+      {!leaseId && (
+         <Button 
+            startIcon={<ArrowBack />} 
+            onClick={() => navigate('/dashboard')} 
+            sx={{ mb: 2 }}
+         > 
+            Back to Dashboard
+         </Button>
+       )}
+       
+       {/* --- Main Content Area --- */}
+      <Container maxWidth="lg" sx={{ py: 3 }}>
+       {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+          <CircularProgress />
+          <Typography sx={{ ml: 2 }}>Loading Analysis...</Typography>
+        </Box>
+      ) : analysisResult ? (
+        // Display Existing Single Analysis Result
+        <AnalysisResultsDisplay
+          analysisResult={analysisResult}
+          score={score}
+          fileName={lease?.fileName || 'Uploaded Lease'}
+          leaseId={leaseId}
+          generateEmailDraft={generateEmailDraft}
+          handleDownloadJson={handleDownloadJson}
+          handleAnalyzeAnother={handleAnalyzeAnother}
+        />
+      ) : isMultiMode && multiAnalysisResults.length > 0 ? (
+        // Display Multi-Analysis Results Table (Placeholder for now)
+        <MultiAnalysisResultsTable results={multiAnalysisResults} />
+      ) : (
+        // Show Upload / Input Form
+        <Grid container spacing={4} justifyContent="center">
+          {/* Left Side: Upload or Text Input */}
           <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
-              <Typography variant="h6" gutterBottom>Option 1: Upload File</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Upload your lease document (PDF or TXT).
-              </Typography>
-        <Button
-          variant="outlined"
-                component="label"
-                startIcon={<CloudUpload />}
-                fullWidth
-                sx={{ mb: 1 }}
-              >
-                Choose File
-                <input type="file" hidden onChange={handleFileChange} accept=".pdf,.txt" />
-              </Button>
-              {file && <Typography variant="body2" sx={{ mb: 2, fontStyle: 'italic' }}>Selected: {file.name}</Typography>}
-              <Button 
-                variant="contained" 
-                onClick={handleUpload} 
-                disabled={!file || analyzing} 
-                fullWidth
-                startIcon={analyzing && file ? <CircularProgress size={20} color="inherit"/> : <Send />}
-              >
-                {analyzing && file ? 'Analyzing Upload...' : 'Upload & Analyze'}
-        </Button>
+             <Typography variant="h4" gutterBottom component="h1">
+                Analyze Your Lease
+             </Typography>
+            <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+               {/* Multi-mode Toggle */}
+               <FormControlLabel 
+                  control={<Switch checked={isMultiMode} onChange={(e) => setIsMultiMode(e.target.checked)} />}
+                  label="Analyze Multiple Leases (up to 5)"
+                  sx={{ mb: 2 }}
+               />
+               
+               {/* Conditional Input Area */} 
+               {isMultiMode ? (
+                 // Multi-File Upload Area
+                 <Box>
+                    <Typography variant="h6" gutterBottom>Upload Files</Typography>
+                    <Button 
+                        variant="outlined" 
+                        component="label" 
+                        startIcon={<CloudUpload />} 
+                        fullWidth
+                        sx={{ mb: 1 }}
+                    > 
+                        {files.length > 0 ? `${files.length} files selected` : 'Select Files (.pdf, .txt)'}
+                        <input 
+                           type="file" 
+                           hidden 
+                           multiple // Enable multi-select
+                           onChange={handleFileChange} 
+                           accept=".pdf,.txt" 
+                        />
+                    </Button>
+                    {files.length > 0 && (
+                        <List dense>
+                           {files.map((f, index) => (
+                              <ListItem key={index} disablePadding>
+                                 <ListItemIcon sx={{minWidth: '30px'}}><Description fontSize="small"/></ListItemIcon>
+                                 <ListItemText primary={f.name} secondary={`${(f.size / 1024).toFixed(1)} KB`} />
+                              </ListItem>
+                           ))}
+                        </List>
+                    )}
+                    <Button 
+                      variant="contained" 
+                      onClick={handleMultiUpload} // Use new handler for multi-upload
+                      disabled={!files.length || analyzing} 
+                      fullWidth
+                      startIcon={analyzing ? <CircularProgress size={20} color="inherit"/> : <Send />}
+                      sx={{ mt: 2 }}
+                    >
+                       {analyzing ? `Analyzing ${currentMultiAnalysisIndex + 1} of ${files.length}...` : `Analyze ${files.length} Files`}
+                    </Button>
+                 </Box>
+               ) : (
+                  // Single File / Text Input Area
+                  <Box>
+                     <Typography variant="h6" gutterBottom>Option 1: Upload Document</Typography>
+                     <Button 
+                        variant="outlined" 
+                        component="label" 
+                        startIcon={<CloudUpload />} 
+                        fullWidth
+                        sx={{ mb: 1 }}
+                     > 
+                        {files.length > 0 ? files[0].name : 'Select File (.pdf, .txt)'}
+                        <input 
+                           type="file" 
+                           hidden 
+                           onChange={handleFileChange} 
+                           accept=".pdf,.txt" 
+                        />
+                     </Button>
+                      <Button 
+                        variant="contained" 
+                        onClick={handleSingleUpload} // Use specific handler for single upload
+                        disabled={!files.length || analyzing} 
+                        fullWidth
+                        startIcon={analyzing ? <CircularProgress size={20} color="inherit"/> : <Send />}
+                      >
+                        {analyzing ? 'Analyzing Upload...' : 'Upload & Analyze'}
+                      </Button>
+                
+                      <Divider sx={{ my: 3 }}>OR</Divider>
+                
+                      <Typography variant="h6" gutterBottom>Option 2: Paste Text</Typography>
+                      <TextField
+                        fullWidth
+                        multiline
+                        rows={8}
+                        variant="outlined"
+                        label="Paste Lease Text Here"
+                        value={textContent}
+                        onChange={handleTextChange}
+                        sx={{ mb: 2 }}
+                      />
+                      <Button 
+                         variant="contained" 
+                         onClick={handleAnalyzeText} 
+                         disabled={!textContent.trim() || analyzing} 
+                         fullWidth
+                         startIcon={analyzing ? <CircularProgress size={20} color="inherit"/> : <Send />}
+                       >
+                         {analyzing ? 'Analyzing Text...' : 'Analyze Text'}
+                      </Button>
+                   </Box>
+               )}
+               
+               {/* Progress Bar */}
+               {analyzing && (
+                  <Box sx={{ width: '100%', mt: 3 }}>
+                     <LinearProgress variant="determinate" value={analysisProgress} />
+                     <Typography variant="caption" display="block" gutterBottom align="center">
+                        {isMultiMode ? `Analyzing file ${currentMultiAnalysisIndex + 1} of ${files.length}: ${files[currentMultiAnalysisIndex]?.name || ''}... ${analysisProgress}%` : `Analysis in progress... ${analysisProgress}%`}
+                     </Typography>
+                  </Box>
+                )}
+                
+               {/* Error Display */} 
+               {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
             </Paper>
           </Grid>
 
-          {/* Text Input Section */}
+          {/* Right Side: Placeholder/Info */}
           <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
-              <Typography variant="h6" gutterBottom>Option 2: Paste Text</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Paste the text content of your lease below.
-            </Typography>
+             <Paper sx={{ p: 3, borderRadius: 2, height: '100%', bgcolor: 'grey.100' }}>
+                <Typography variant="h6" gutterBottom>How it Works</Typography>
+                <List>
+                  <ListItem>
+                    <ListItemIcon><Check color="primary" /></ListItemIcon>
+                    <ListItemText primary={isMultiMode ? "Upload up to 5 PDF or TXT lease files." : "Upload your lease document (PDF or TXT) or paste the text."} />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemIcon><Check color="primary" /></ListItemIcon>
+                    <ListItemText primary="Our AI analyzes the content for key terms, dates, and potential risks." />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemIcon><Check color="primary" /></ListItemIcon>
+                    <ListItemText primary={isMultiMode ? "Review a summary table comparing the key results for each lease." : "Receive a detailed report with summaries and highlighted issues."} />
+                  </ListItem>
+                </List>
+                <Alert severity="info" icon={<InfoOutlined />} sx={{ mt: 2 }}>
+                  Your documents are processed securely and are not stored long-term unless you explicitly save the analysis.
+                </Alert>
+             </Paper>
+           </Grid>
+        </Grid>
+      )}
+
+      {/* Email Generation Dialog */}
+      <Dialog open={emailDialogOpen} onClose={() => setEmailDialogOpen(false)} fullWidth maxWidth="md">
+         <DialogTitle>Generated Email Draft</DialogTitle>
+         <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+               Review and copy the draft email below to send to your landlord. Remember to replace '[Your Name]' and customize as needed.
+            </DialogContentText>
             <TextField
-                multiline
-                rows={8}
-              fullWidth
-              variant="outlined"
-                placeholder="Paste your lease text here..."
-              value={textContent}
-              onChange={handleTextChange}
-                disabled={analyzing}
-              sx={{ mb: 2 }}
+               fullWidth
+               multiline
+               rows={15}
+               value={emailDraft}
+               onChange={(e) => setEmailDraft(e.target.value)}
+               variant="outlined"
             />
-            <Button
-              variant="contained"
-              onClick={handleAnalyzeText}
-                disabled={!textContent.trim() || analyzing} 
-                fullWidth
-                startIcon={analyzing && textContent ? <CircularProgress size={20} color="inherit"/> : <Send />}
-              >
-                {analyzing && textContent ? 'Analyzing Text...' : 'Analyze Text'}
-              </Button>
-        </Paper>
-              </Grid>
-            </Grid>
+         </DialogContent>
+         <DialogActions>
+            <Button onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCopyEmail} variant="contained" startIcon={<Email />}>
+               Copy Draft
+            </Button>
+         </DialogActions>
+      </Dialog>
+     </Container>
+     </Container>
+   );
+ };
+ 
+ // Define MultiAnalysisResultsTable component (Implementation)
+ const MultiAnalysisResultsTable = ({ results }) => {
+ 
+  const formatValue = (value) => value || 'N/A';
 
-        {/* Analysis Progress */}
-        {analyzing && (
-          <Box sx={{ mt: 4, textAlign: 'center' }}> { /* Center align text */}
-            <Typography sx={{ mb: 1 }} variant="h6">Analyzing Document...</Typography>
-            <Typography sx={{ mb: 2 }} variant="body2" color="text.secondary">
-              This typically takes 1-2 minutes. Please wait.
-            </Typography>
-            <LinearProgress variant="determinate" value={analysisProgress} sx={{ height: 10, borderRadius: 5, mb: 1 }} /> { /* Add margin bottom */}
-            {/* Add Percentage Display */}
-            <Typography variant="caption" display="block">
-               {`${Math.round(analysisProgress)}%`}
-            </Typography>
-          </Box>
-        )}
+  if (!results || results.length === 0) {
+    return (
+      <Paper sx={{ p: 3, mt: 3 }}>
+        <Typography variant="h5" gutterBottom>Multi-Lease Analysis Summary</Typography>
+        <Typography color="text.secondary">No analysis results to display.</Typography>
+      </Paper>
+    );
+  }
 
-        {/* Display NEW Analysis Results (Before Saving/Navigation) */}
-        {/* This section shows results immediately after analysis, before redirecting */}
-        {!analyzing && analysisResult && !leaseId && (
-            <Box sx={{mt: 4}}>
-                <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>Analysis Results</Typography>
-                <AnalysisResultsDisplay 
-                    analysisResult={analysisResult} 
-                    score={score} 
-                    // Pass minimal props needed before save/navigation
-                />
-    </Box>
-        )}
+  return (
+    <Paper sx={{ mt: 3, overflowX: 'auto' }}> {/* Use TableContainer for scroll */}
+      <Typography variant="h5" gutterBottom sx={{ p: 2 }}>Multi-Lease Analysis Summary</Typography>
+      <TableContainer>
+        <Table stickyHeader size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 'bold' }}>Filename</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }} align="center">Status</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }} align="center">Score</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Landlord</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Rent</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }} align="center">Risks</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Details</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {results.map((result, index) => {
+              const isComplete = result.status === 'Complete';
+              const extractedData = result.analysis?.extracted_data || {};
+              const risks = result.analysis?.risks || [];
 
-    </Container>
+              return (
+                <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                  <TableCell component="th" scope="row">
+                    <Typography variant="body2" noWrap title={result.fileName}>{result.fileName}</Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip 
+                      label={result.status}
+                      color={isComplete ? 'success' : 'error'}
+                      size="small"
+                      icon={isComplete ? <Check fontSize="small"/> : <ErrorOutline fontSize="small"/>}
+                     />
+                  </TableCell>
+                  <TableCell align="center">
+                     {isComplete ? (
+                         <Typography variant="body2" sx={{ color: `${getScoreColor(result.score)}.main`, fontWeight: 'bold' }}>
+                           {result.score}
+                         </Typography>
+                      ) : '-'}
+                  </TableCell>
+                  <TableCell>{formatValue(extractedData.Landlord_Name)}</TableCell>
+                  <TableCell>{formatValue(extractedData.Monthly_Rent_Amount)}</TableCell>
+                  <TableCell align="center">{isComplete ? risks.length : '-'}</TableCell>
+                  <TableCell>
+                    {result.status === 'Error' ? (
+                       <Typography variant="caption" color="error">{result.error}</Typography>
+                     ) : (
+                       <Typography variant="caption" color="text.secondary">Analysis Complete</Typography>
+                     )}
+                  </TableCell>
+                   <TableCell>
+                    {result.leaseId ? (
+                       <Button 
+                          component={Link} 
+                          to={`/analysis/${result.leaseId}`} 
+                          size="small" 
+                          variant="outlined"
+                       >
+                          View
+                       </Button>
+                     ) : (
+                        <Typography variant="caption" color="text.disabled">No Link</Typography>
+                     )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
   );
-};
+ };
 
-export default LeaseAnalysis; 
+ export default LeaseAnalysis; 

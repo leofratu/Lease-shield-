@@ -188,7 +188,7 @@ const LandingPage = () => {
         >
           <Container maxWidth="lg">
             <Grid container spacing={{ xs: 3, md: 5 }} alignItems="center">
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={6} sx={{ borderRadius: 3 }}>
                 <Typography 
                   variant="h2" 
                   component="h1" 
