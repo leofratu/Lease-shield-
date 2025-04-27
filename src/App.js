@@ -79,15 +79,11 @@ const ProtectedRoute = ({ children, requirePaid = false }) => {
   const { user, loading: authLoading } = useAuthState();
   const location = useLocation();
 
-  // Conditionally get profile state ONLY if needed for this route
-  // If requirePaid is false, use dummy values that won't trigger loading/failure states
-  const profileState = requirePaid 
-    ? (useUserProfile() || { profile: null, loadingProfile: true }) 
-    : { profile: null, loadingProfile: false }; // Don't load profile if not required
+  // Always call useUserProfile at the top level
+  const { profile, loadingProfile } = useUserProfile() || { profile: null, loadingProfile: true }; 
 
-  const { profile, loadingProfile } = profileState;
-
-  console.log(`ProtectedRoute (${location.pathname}): Start. AuthLoading=${authLoading}, User? ${!!user}, RequirePaid=${requirePaid}, ProfileLoading=${requirePaid ? loadingProfile : 'N/A'}`);
+  // Log initial state
+  console.log(`ProtectedRoute (${location.pathname}): Start. AuthLoading=${authLoading}, ProfileLoading=${loadingProfile}, User? ${!!user}, RequirePaid=${requirePaid}`);
 
   // 1. Wait for Firebase Auth initialization
   if (authLoading) {
@@ -111,14 +107,13 @@ const ProtectedRoute = ({ children, requirePaid = false }) => {
       }
       // Profile loaded, check tier
       if (!profile || profile.subscriptionTier !== 'paid') {
-         console.log(`ProtectedRoute (${location.pathname}): Paid route, profile check failed. Redirecting to /pricing.`);
+         console.log(`ProtectedRoute (${location.pathname}): Paid route, profile check failed (Tier: ${profile?.subscriptionTier}). Redirecting to /pricing.`);
          return <Navigate to="/pricing" replace />;
       }
       console.log(`ProtectedRoute (${location.pathname}): Paid route check passed.`);
   }
 
   // 4. If we reach here, access is granted
-  // (User is logged in, and if paid was required, that check passed)
   console.log(`ProtectedRoute (${location.pathname}): Access granted. Rendering children (User: ${user.uid}).`);
   return children;
 };
