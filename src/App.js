@@ -156,11 +156,21 @@ console.log("Google Analytics Initialized with ID:", MEASUREMENT_ID);
 const RouteChangeTracker = () => {
   const location = useLocation();
 
+  // Log the initial location when the component mounts
+  useEffect(() => {
+      console.log(`RouteChangeTracker: Initial location on mount: ${location.pathname}${location.search}`);
+  }, []); // Empty dependency array runs only once on mount
+
   useEffect(() => {
     // Send pageview with path and title
     const pagePath = location.pathname + location.search;
-    ReactGA.send({ hitType: "pageview", page: pagePath, title: document.title });
-    console.log(`GA Pageview Sent: ${pagePath}`);
+    // Don't send GA event if path is just /index.html - it might be transitional
+    if (pagePath !== '/index.html') {
+        ReactGA.send({ hitType: "pageview", page: pagePath, title: document.title });
+        console.log(`GA Pageview Sent: ${pagePath}`);
+    } else {
+        console.log(`GA Pageview Skipped for path: ${pagePath}`);
+    }
   }, [location]);
 
   return null; // This component does not render anything
