@@ -17,6 +17,7 @@ import time # For timestamp
 import uuid # For unique order ID
 # Import the specific exception for permission errors
 from google.api_core.exceptions import PermissionDenied, GoogleAPIError 
+import datetime # Needed for daily scan logic
 
 # Placeholder for the actual PayID19 library - replace if needed
 try:
@@ -302,15 +303,23 @@ def get_or_create_user_profile(user_id):
     user_ref = db.collection('users').document(user_id)
     user_doc = user_ref.get()
     if user_doc.exists:
-        return user_doc.to_dict()
+        # Ensure existing profiles have new fields (handle potential missing fields)
+        profile_data = user_doc.to_dict()
+        if 'dailyScansUsed' not in profile_data:
+            profile_data['dailyScansUsed'] = 0
+        if 'lastScanDate' not in profile_data:
+            profile_data['lastScanDate'] = None # Or a default past date string like '1970-01-01'
+        return profile_data
     else:
         print(f"Creating default free profile for user: {user_id}")
         default_profile = {
             'userId': user_id, 
             'subscriptionTier': 'free',
             'freeScansUsed': 0,
+            'maxAllowedScans': 3, # Default for free tier
+            'dailyScansUsed': 0,
+            'lastScanDate': None, # Initialize as None
             'createdAt': firestore.SERVER_TIMESTAMP
-            # Add email later if needed, might require frontend to pass it
         }
         try:
             user_ref.set(default_profile)
@@ -319,15 +328,49 @@ def get_or_create_user_profile(user_id):
              print(f"Error creating user profile for {user_id}: {e}")
              return None # Indicate failure
 
-def increment_free_scan_count(user_id):
-    """Atomically increments the free scan count for a user."""
+def increment_scan_counts(user_id, tier):
+    """Atomically increments scan counts based on tier."""
     user_ref = db.collection('users').document(user_id)
+    today_str = datetime.date.today().isoformat() # Get YYYY-MM-DD
+
     try:
-        user_ref.update({'freeScansUsed': firestore.Increment(1)})
+        # Use a transaction to ensure atomicity if needed, but separate updates might be fine
+        
+        # Increment monthly count for limited tiers (free, commercial, premium)
+        if tier in ['free', 'commercial', 'premium']:
+            user_ref.update({'freeScansUsed': firestore.Increment(1)})
+            print(f"Incremented monthly scan count for user {user_id} (tier: {tier})")
+
+        # Handle daily count for premium tier
+        if tier == 'premium':
+            # Fetch current daily count and date first
+            user_doc = user_ref.get()
+            if user_doc.exists:
+                profile_data = user_doc.to_dict()
+                last_scan_date = profile_data.get('lastScanDate')
+                daily_scans = profile_data.get('dailyScansUsed', 0)
+
+                update_data = {}
+                if last_scan_date == today_str:
+                    # Same day, just increment
+                    update_data['dailyScansUsed'] = firestore.Increment(1)
+                    print(f"Incremented daily scan count for user {user_id} (tier: {tier})")
+                else:
+                    # New day, reset count to 1 and update date
+                    update_data['dailyScansUsed'] = 1
+                    update_data['lastScanDate'] = today_str
+                    print(f"Reset daily scan count to 1 for user {user_id} (tier: {tier}) on new day {today_str}")
+                
+                user_ref.update(update_data)
+            else:
+                 print(f"Error: Could not find user {user_id} to update daily scan count.")
+                 return False # Indicate failure if user doc missing
+
         return True
     except Exception as e:
-        print(f"Error incrementing scan count for {user_id}: {e}")
+        print(f"Error incrementing scan counts for {user_id} (tier: {tier}): {e}")
         return False
+
 # --- End Firestore User Helpers --- 
 
 # --- Ping Endpoint --- 
@@ -586,48 +629,78 @@ def analyze_document():
     
     user_profile = get_or_create_user_profile(user_id)
     if not user_profile:
-         # Handle case where profile creation failed
          return jsonify({'error': 'Could not retrieve or create user profile.'}), 500
 
     can_analyze = False
-    is_free_scan_increment = False
-    # Flag to indicate if we should increment the scan count (used for limited tiers)
-    should_increment_scans = False 
-
+    should_increment = False # Unified flag
     tier = user_profile.get('subscriptionTier')
-    scans_used = user_profile.get('freeScansUsed', 0) # Use 'freeScansUsed' to track usage across tiers
+    
+    # Get current scan counts
+    monthly_scans_used = user_profile.get('freeScansUsed', 0)
+    daily_scans_used = user_profile.get('dailyScansUsed', 0)
+    last_scan_date = user_profile.get('lastScanDate')
+    today_str = datetime.date.today().isoformat()
 
-    if tier == 'paid':
+    # Check if daily count needs reset (for premium tier check)
+    if tier == 'premium' and last_scan_date != today_str:
+        current_daily_for_check = 0 # Treat as 0 for limit check if date is old
+    else:
+        current_daily_for_check = daily_scans_used
+
+    # --- Tier Logic --- 
+    if tier == 'pro': # New Pro tier
         can_analyze = True
-        should_increment_scans = False # Paid users have unlimited scans
-    elif tier == 'commercial':
-        max_scans = user_profile.get('maxAllowedScans') 
-        # Treat null or negative max_scans as 0 (no scans allowed unless explicitly set higher)
-        if max_scans is None or not isinstance(max_scans, int) or max_scans < 0:
-            max_scans = 0
-            
-        if scans_used < max_scans:
-            can_analyze = True
-            should_increment_scans = True # Increment usage for commercial tier
+        should_increment = False # Unlimited
+        print(f"User {user_id} (Pro) - Access granted (Unlimited)")
+    elif tier == 'paid': # Keep existing paid tier logic (assuming unlimited)
+        can_analyze = True
+        should_increment = False
+        print(f"User {user_id} (Paid) - Access granted (Unlimited)")
+    elif tier == 'premium': # New Premium tier
+        max_monthly_scans = 50 # Defined limit
+        max_daily_scans = 3 # Defined limit
+        # Check monthly limit
+        if monthly_scans_used < max_monthly_scans:
+            # Check daily limit
+            if current_daily_for_check < max_daily_scans:
+                can_analyze = True
+                should_increment = True # Increment both monthly and daily
+                print(f"User {user_id} (Premium) - Access granted (Monthly: {monthly_scans_used}/{max_monthly_scans}, Daily: {current_daily_for_check}/{max_daily_scans})")
+            else:
+                print(f"User {user_id} (Premium) Daily scan limit reached ({current_daily_for_check}/{max_daily_scans})")
+                return jsonify({'error': f'Daily analysis limit ({max_daily_scans}) reached for Premium plan.', 'limitReached': 'daily'}), 429 # Too Many Requests
         else:
-            print(f"User {user_id} (Commercial) scan limit ({max_scans}) reached.")
-            return jsonify({'error': f'Commercial scan limit reached ({max_scans} used). Contact admin for more.', 'upgradeRequired': False}), 402 # Payment Required (or custom code)
+             print(f"User {user_id} (Premium) Monthly scan limit reached ({monthly_scans_used}/{max_monthly_scans})")
+             return jsonify({'error': f'Monthly analysis limit ({max_monthly_scans}) reached for Premium plan. Upgrade or wait until next cycle.', 'limitReached': 'monthly'}), 429 # Too Many Requests
+    elif tier == 'commercial':
+        max_scans = user_profile.get('maxAllowedScans', 0)
+        if max_scans <= 0:
+            print(f"User {user_id} (Commercial) has max scans set to {max_scans}. Denying access.")
+            return jsonify({'error': 'Commercial plan has no scans allowed. Contact admin.', 'upgradeRequired': False}), 403
+        if monthly_scans_used < max_scans:
+            can_analyze = True
+            should_increment = True # Increment monthly count
+            print(f"User {user_id} (Commercial) - Access granted ({monthly_scans_used}/{max_scans})")
+        else:
+            print(f"User {user_id} (Commercial) scan limit reached ({monthly_scans_used}/{max_scans}).")
+            return jsonify({'error': f'Commercial scan limit reached ({monthly_scans_used}/{max_scans} used). Contact admin for more.', 'limitReached': 'monthly'}), 429
     elif tier == 'free':
         free_limit = 3
-        if scans_used < free_limit:
+        if monthly_scans_used < free_limit:
             can_analyze = True
-            should_increment_scans = True # Increment usage for free tier
+            should_increment = True # Increment monthly count
+            print(f"User {user_id} (Free) - Access granted ({monthly_scans_used}/{free_limit})")
         else:
-            # Free limit reached
-             print(f"User {user_id} free scan limit reached.")
-             return jsonify({'error': 'Free analysis limit reached. Please upgrade to analyze more leases.', 'upgradeRequired': True}), 402 # Payment Required
+             print(f"User {user_id} (Free) scan limit reached ({monthly_scans_used}/{free_limit}).")
+             return jsonify({'error': 'Free analysis limit reached. Please upgrade.', 'upgradeRequired': True, 'limitReached': 'monthly'}), 429
     else:
-        # Unknown subscription tier - deny access
+        # Unknown subscription tier
         print(f"User {user_id} has unknown subscription tier: {tier}")
         return jsonify({'error': 'Invalid subscription status.'}), 403
         
     if not can_analyze:
-         # This case should technically be handled above, but as a fallback
+         # Fallback denial
+         print(f"User {user_id} (Tier: {tier}) - Access denied (Fallback check)")
          return jsonify({'error': 'Analysis not permitted with current subscription.'}), 403
     # --- End Authorization & Subscription Check ---
 
@@ -675,7 +748,6 @@ def analyze_document():
     try:
         analysis_result_text = analyze_lease(text)
         if not analysis_result_text:
-            # Specific error if analysis itself failed
             return jsonify({'error': 'AI analysis failed. Please try again later.'}), 500
         
         # Parse the JSON response from Gemini
@@ -698,11 +770,13 @@ def analyze_document():
                 'error_message': 'An error occurred while parsing the analysis result.'
             }
 
-        # --- Increment free scan count if needed --- 
-        if should_increment_scans:
-            if not increment_free_scan_count(user_id):
+        # --- Increment scan counts if needed --- 
+        if should_increment:
+            # Use the new function and pass the tier
+            if not increment_scan_counts(user_id, tier):
                  # Log error but proceed - analysis was done, just count failed
-                 print(f"Failed to increment scan count for user {user_id} (tier: {tier}) after successful analysis.")
+                 print(f"CRITICAL: Failed to increment scan counts for user {user_id} (tier: {tier}) after successful analysis.")
+                 # Consider adding to a retry queue or alert system
         # --- End Increment --- 
 
         # Save result to Firestore (as before, creating new doc)
