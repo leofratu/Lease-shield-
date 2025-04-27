@@ -68,19 +68,26 @@ const AdminPage = () => {
 
     // Function to fetch users - wrapped in useCallback
     const loadUsers = useCallback(async () => {
-        if (!user) return;
+        if (!user) {
+            console.log("AdminPage: loadUsers called but user is null, returning.");
+            return;
+        }
         
+        console.log("AdminPage: loadUsers starting...");
         setIsLoadingUsers(true);
         setFetchError('');
         try {
             const token = await user.getIdToken();
+            console.log("AdminPage: loadUsers got token, fetching users...");
             const fetchedUsers = await getAdminUsers(token);
+            console.log(`AdminPage: loadUsers received ${fetchedUsers?.length || 0} users.`);
             setUsers(fetchedUsers || []);
         } catch (err) {
-            console.error("Error fetching admin users:", err);
+            console.error("AdminPage: Error in loadUsers:", err);
             setFetchError(`Failed to load users: ${err.message}`);
             setUsers([]);
         } finally {
+            console.log("AdminPage: loadUsers finished.");
             setIsLoadingUsers(false);
         }
     }, [user]); // Re-create loadUsers only if user object changes

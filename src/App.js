@@ -77,29 +77,46 @@ const theme = createTheme({
 // Updated Protected route component
 const ProtectedRoute = ({ children, requirePaid = false }) => {
   const { user, loading: authLoading } = useAuthState();
-  const { profile, loadingProfile } = useUserProfile() || { profile: null, loadingProfile: true };
-  const location = useLocation(); // Get current location
+  const { profile, loadingProfile } = useUserProfile() || { profile: null, loadingProfile: true }; 
+  const location = useLocation();
 
   console.log(`ProtectedRoute (${location.pathname}): AuthLoading=${authLoading}, ProfileLoading=${loadingProfile}, User? ${!!user}`);
 
-  if (authLoading || loadingProfile) {
-    console.log(`ProtectedRoute (${location.pathname}): Showing Loading...`);
-    return <div>Loading...</div>;
+  // --- Primary Check: Wait for Firebase Auth state to be definitively resolved --- 
+  if (authLoading) {
+    // If Firebase Auth is still initializing, always show loading.
+    console.log(`ProtectedRoute (${location.pathname}): Waiting for Firebase Auth state...`);
+    return <div className="flex justify-center items-center min-h-screen"><p>Loading User...</p></div>;
   }
 
+  // --- Check if user is logged in (Auth state is now loaded and definitively false) --- 
   if (!user) {
-    console.log(`ProtectedRoute (${location.pathname}): No user found, redirecting to /login`);
-    return <Navigate to="/login" />;
+    // Only redirect if authLoading is confirmed false AND user is null.
+    console.log(`ProtectedRoute (${location.pathname}): Auth finished, no user found. Redirecting to /login`);
+    return <Navigate to="/login" replace />;
   }
 
+  // --- User is definitely logged in at this point --- 
+
+  // --- Handle requirePaid (only if necessary for this route) --- 
   if (requirePaid) {
+    // Wait for profile if it's still loading for a paid route
+    if (loadingProfile) {
+        console.log(`ProtectedRoute (${location.pathname}): Paid required, waiting for profile...`);
+        return <div className="flex justify-center items-center min-h-screen"><p>Loading Profile...</p></div>;
+    }
+    // Profile is loaded, check the tier
     if (!profile || profile.subscriptionTier !== 'paid') {
-      console.log(`ProtectedRoute (${location.pathname}): Paid required, but profile tier is ${profile?.subscriptionTier}. Redirecting to /pricing`);
+      console.log(`ProtectedRoute (${location.pathname}): Paid required, profile loaded, tier is ${profile?.subscriptionTier}. Redirecting to /pricing`);
       return <Navigate to="/pricing" replace />;
     }
   }
 
-  console.log(`ProtectedRoute (${location.pathname}): Access granted, rendering children.`);
+  // --- Access Granted --- 
+  console.log(`ProtectedRoute (${location.pathname}): Access granted (User: ${user.uid}), rendering children.`);
+  if (!authLoading && user && !(requirePaid && (loadingProfile || !profile || profile.subscriptionTier !== 'paid'))) {
+    console.log(`ProtectedRoute (${location.pathname}): Final decision -> Render children.`);
+  }
   return children;
 };
 
@@ -148,6 +165,8 @@ const RouteChangeTracker = () => {
 // --- End Route Change Tracker ---
 
 function App() {
+  // Log when App component mounts
+  console.log("App component mounted.");
 
   // --- Backend Pinger --- 
   useEffect(() => {
