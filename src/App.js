@@ -176,10 +176,6 @@ function App() {
   // Log when App component mounts
   console.log("App component mounted.");
 
-  // Use useLocation here to log the location seen by the App component itself
-  const appLocation = useLocation();
-  console.log(`App component location: ${appLocation.pathname}${appLocation.search}`);
-
   // --- Backend Pinger --- 
   useEffect(() => {
     const pingBackend = async () => {
@@ -313,9 +309,11 @@ function App() {
 
           {/* Admin Route - Protected by login, authorization checked inside AdminPage */}
           <Route path="/admin" element={
-            <Layout>
-              <AdminPage />
-            </Layout>
+            <ProtectedRoute>
+              <Layout>
+                <AdminPage />
+              </Layout>
+            </ProtectedRoute>
           } />
           
           {/* 404 Not Found */}

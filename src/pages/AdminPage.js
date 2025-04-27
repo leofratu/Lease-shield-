@@ -38,16 +38,12 @@ const createAdminCommercialUser = (token, email, password, limit) => {
 };
 // --- End API Helpers ---
 
-// List of admin emails
-const ADMIN_EMAILS = ['leofratu@gmail.com'];
-
 const AdminPage = () => {
     // Log when the component function body starts executing
     console.log("AdminPage component mounting..."); 
 
     const { user, loading: authLoading } = useAuthState();
     const [isAdmin, setIsAdmin] = useState(false);
-    const [adminChecked, setAdminChecked] = useState(false);
     const [users, setUsers] = useState([]);
     const [isLoadingUsers, setIsLoadingUsers] = useState(true);
     const [fetchError, setFetchError] = useState('');
@@ -102,19 +98,15 @@ const AdminPage = () => {
             // Log the user object to inspect its contents
             console.log('Auth state loaded. User object:', user);
             
-            // Check if user exists and email matches any admin email (case-insensitive)
-            const isAdminUser = user && ADMIN_EMAILS.some(email => 
-                user.email?.toLowerCase() === email.toLowerCase()
-            );
-            
+            // Check if user exists and email matches (case-insensitive)
+            const isAdminUser = user && user.email?.toLowerCase() === 'leofratu@gmail.com';
             console.log(`Checking admin status: User email is ${user?.email}, isAdminUser = ${isAdminUser}`);
             
-            setIsAdmin(isAdminUser);
-            setAdminChecked(true);
-            
             if (isAdminUser) {
+                setIsAdmin(true);
                 loadUsers(); // Load users when admin status is confirmed
             } else {
+                setIsAdmin(false);
                 setIsLoadingUsers(false); // No data to load if not admin
             }
         } else {
@@ -201,23 +193,12 @@ const AdminPage = () => {
     if (authLoading) {
         return <div className="flex justify-center items-center min-h-screen"><p>Loading Authentication...</p></div>;
     }
-    
-    // Redirect to login if not authenticated
-    if (!user) {
-        return <Navigate to="/login" replace />;
-    }
-    
-    // Wait until admin check is complete before rendering
-    if (!adminChecked) {
-        return <div className="flex justify-center items-center min-h-screen"><p>Checking permissions...</p></div>;
-    }
 
-    // Unauthorized message for non-admin users
     if (!isAdmin) {
         return (
              <div className="container mx-auto p-6 text-center">
-                 <h1 className="text-2xl font-bold text-red-600">Admin Access Required</h1>
-                 <p className="text-gray-600 mt-2">You do not have permission to access this page. Please contact an administrator if you believe this is an error.</p>
+                 <h1 className="text-2xl font-bold text-red-600">Page Not Found</h1>
+                 <p className="text-gray-600 mt-2">The requested admin page does not exist or you do not have permission to view it.</p>
              </div>
         );
     }
