@@ -202,6 +202,11 @@ const AdminPage = () => {
         return <div className="flex justify-center items-center min-h-screen"><p>Loading Authentication...</p></div>;
     }
     
+    // Redirect to login if not authenticated
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+    
     // Wait until admin check is complete before rendering
     if (!adminChecked) {
         return <div className="flex justify-center items-center min-h-screen"><p>Checking permissions...</p></div>;
