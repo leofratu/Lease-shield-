@@ -77,46 +77,49 @@ const theme = createTheme({
 // Updated Protected route component
 const ProtectedRoute = ({ children, requirePaid = false }) => {
   const { user, loading: authLoading } = useAuthState();
-  const { profile, loadingProfile } = useUserProfile() || { profile: null, loadingProfile: true }; 
   const location = useLocation();
 
-  console.log(`ProtectedRoute (${location.pathname}): AuthLoading=${authLoading}, ProfileLoading=${loadingProfile}, User? ${!!user}`);
+  // Conditionally get profile state ONLY if needed for this route
+  // If requirePaid is false, use dummy values that won't trigger loading/failure states
+  const profileState = requirePaid 
+    ? (useUserProfile() || { profile: null, loadingProfile: true }) 
+    : { profile: null, loadingProfile: false }; // Don't load profile if not required
 
-  // --- Primary Check: Wait for Firebase Auth state to be definitively resolved --- 
+  const { profile, loadingProfile } = profileState;
+
+  console.log(`ProtectedRoute (${location.pathname}): Start. AuthLoading=${authLoading}, User? ${!!user}, RequirePaid=${requirePaid}, ProfileLoading=${requirePaid ? loadingProfile : 'N/A'}`);
+
+  // 1. Wait for Firebase Auth initialization
   if (authLoading) {
-    // If Firebase Auth is still initializing, always show loading.
-    console.log(`ProtectedRoute (${location.pathname}): Waiting for Firebase Auth state...`);
-    return <div className="flex justify-center items-center min-h-screen"><p>Loading User...</p></div>;
+    console.log(`ProtectedRoute (${location.pathname}): Auth loading...`);
+    return <div className="flex justify-center items-center min-h-screen"><p>Authenticating...</p></div>;
   }
 
-  // --- Check if user is logged in (Auth state is now loaded and definitively false) --- 
+  // 2. Check if user is logged in (Auth is initialized now)
   if (!user) {
-    // Only redirect if authLoading is confirmed false AND user is null.
-    console.log(`ProtectedRoute (${location.pathname}): Auth finished, no user found. Redirecting to /login`);
+    console.log(`ProtectedRoute (${location.pathname}): No user after auth load. Redirecting to /login.`);
     return <Navigate to="/login" replace />;
   }
 
-  // --- User is definitely logged in at this point --- 
-
-  // --- Handle requirePaid (only if necessary for this route) --- 
+  // 3. If requirePaid is true, handle profile loading and tier check
   if (requirePaid) {
-    // Wait for profile if it's still loading for a paid route
-    if (loadingProfile) {
-        console.log(`ProtectedRoute (${location.pathname}): Paid required, waiting for profile...`);
-        return <div className="flex justify-center items-center min-h-screen"><p>Loading Profile...</p></div>;
-    }
-    // Profile is loaded, check the tier
-    if (!profile || profile.subscriptionTier !== 'paid') {
-      console.log(`ProtectedRoute (${location.pathname}): Paid required, profile loaded, tier is ${profile?.subscriptionTier}. Redirecting to /pricing`);
-      return <Navigate to="/pricing" replace />;
-    }
+      console.log(`ProtectedRoute (${location.pathname}): Paid route check. ProfileLoading=${loadingProfile}, Tier=${profile?.subscriptionTier}`);
+      // Wait for profile if it's still loading
+      if (loadingProfile) {
+         console.log(`ProtectedRoute (${location.pathname}): Paid route, profile loading...`);
+         return <div className="flex justify-center items-center min-h-screen"><p>Loading User Profile...</p></div>;
+      }
+      // Profile loaded, check tier
+      if (!profile || profile.subscriptionTier !== 'paid') {
+         console.log(`ProtectedRoute (${location.pathname}): Paid route, profile check failed. Redirecting to /pricing.`);
+         return <Navigate to="/pricing" replace />;
+      }
+      console.log(`ProtectedRoute (${location.pathname}): Paid route check passed.`);
   }
 
-  // --- Access Granted --- 
-  console.log(`ProtectedRoute (${location.pathname}): Access granted (User: ${user.uid}), rendering children.`);
-  if (!authLoading && user && !(requirePaid && (loadingProfile || !profile || profile.subscriptionTier !== 'paid'))) {
-    console.log(`ProtectedRoute (${location.pathname}): Final decision -> Render children.`);
-  }
+  // 4. If we reach here, access is granted
+  // (User is logged in, and if paid was required, that check passed)
+  console.log(`ProtectedRoute (${location.pathname}): Access granted. Rendering children (User: ${user.uid}).`);
   return children;
 };
 
