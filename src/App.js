@@ -123,17 +123,22 @@ const TrialRouteHandler = () => {
   const { user, loading: authLoading } = useAuthState();
   const { profile, loadingProfile } = useUserProfile() || { profile: null, loadingProfile: true };
 
+  console.log(`TrialRouteHandler: AuthLoading=${authLoading}, ProfileLoading=${loadingProfile}, User? ${!!user}, Tier=${profile?.subscriptionTier}`);
+
   if (authLoading || loadingProfile) {
-    return <div>Loading...</div>; // Show loading while checking state
+    console.log("TrialRouteHandler: Waiting for auth/profile...");
+    return <div className="flex justify-center items-center min-h-screen"><p>Loading...</p></div>; // Show loading while checking state
   }
 
-  // If user is logged in OR has a paid plan, redirect away from /trial
-  if (user || (profile && profile.subscriptionTier === 'paid')) { 
-    console.log("Redirecting logged-in/paid user away from /trial page.");
-    return <Navigate to="/dashboard" replace />; // Redirect to dashboard
+  // Redirect away only if user has a paid ('pro') or 'commercial' plan
+  const tier = profile?.subscriptionTier;
+  if (user && (tier === 'pro' || tier === 'commercial' || tier === 'paid')) { // Check for pro, commercial, and legacy paid
+    console.log(`TrialRouteHandler: User is logged in with tier '${tier}', redirecting to dashboard.`);
+    return <Navigate to="/dashboard" replace />;
   }
   
-  // Otherwise (not logged in, no paid plan), show the TrialPage
+  // Otherwise (not logged in, or logged in with 'free' tier), show the TrialPage
+  console.log(`TrialRouteHandler: Showing TrialPage (User? ${!!user}, Tier=${tier})`);
   return (
     <Layout showAuthButtons={true}>
       <TrialPage />
