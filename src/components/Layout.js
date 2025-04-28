@@ -145,6 +145,20 @@ const Layout = ({ children, showAuthButtons = false }) => {
             Lease Shield AI
           </Typography>
           
+          {/* Add Blog link here */}
+          <Button 
+            color="inherit" 
+            component={RouterLink} 
+            to="/blog"
+            sx={{ 
+              mx: 1, // Add some margin
+              borderRadius: 2,
+              '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } 
+            }}
+          >
+            Blog
+          </Button>
+          
           {loading ? (
             <CircularProgress color="inherit" size={24} />
           ) : user ? (

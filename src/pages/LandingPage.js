@@ -238,6 +238,13 @@ const LandingPage = () => {
 
   return (
     <Box sx={{ overflowX: 'hidden' }}>
+      {/* Add Blog Link to top right */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2 }}>
+        <Button component={RouterLink} to="/blog" variant="text" color="inherit">
+          Blog
+        </Button>
+      </Box>
+
       <Helmet>
         <title>AI Lease Analyzer & Lease Shield | Understand Your Rental Agreement</title>
         <meta 

@@ -1,21 +1,27 @@
 // Utility functions related to payment processing
 
 // Function that calls the backend to start Maxelpay checkout
-export const initiateCheckout = async (token) => {
-  console.log("Attempting to initiate Maxelpay checkout...");
+export const initiateCheckout = async (token, planId) => {
+  console.log(`Attempting to initiate Maxelpay checkout for plan: ${planId}...`);
   
   // Get API URL from environment variable, default to localhost
   const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081'; 
-  const endpoint = `${apiUrl}/api/payid/create-checkout-session`; // Keep endpoint name consistent for now
+  const endpoint = `${apiUrl}/api/payid/create-checkout-session`;
+
+  // Basic validation
+  if (!planId) {
+      throw new Error('Plan ID is required to initiate checkout.');
+  }
 
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json' // Ensure backend expects JSON
+        'Content-Type': 'application/json'
       },
-      // body: JSON.stringify({ planId: 'PRO_MONTHLY_5USD' }) // Optional: Send plan ID if needed
+      // Send planId in the request body
+      body: JSON.stringify({ planId: planId }) 
     });
 
     const responseData = await response.json();

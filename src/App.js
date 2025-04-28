@@ -25,6 +25,7 @@ import UnderstandingCommonClauses from './pages/blog/UnderstandingCommonClauses'
 import NegotiatingLeaseTerms from './pages/blog/NegotiatingLeaseTerms';
 import LeaseRedFlags from './pages/blog/LeaseRedFlags';
 import TenantRightsOverview from './pages/blog/TenantRightsOverview';
+import UsingLeaseShieldAIEffectively from './pages/blog/UsingLeaseShieldAIEffectively';
 import AdminPage from './pages/AdminPage';
 
 // Create theme
@@ -264,6 +265,11 @@ function App() {
            <Route path="/blog/tenant-rights-overview" element={
             <Layout showAuthButtons={true}>
               <TenantRightsOverview />
+            </Layout>
+          } />
+          <Route path="/blog/using-lease-shield-ai-effectively" element={
+            <Layout showAuthButtons={true}>
+              <UsingLeaseShieldAIEffectively />
             </Layout>
           } />
           {/* END Public Blog Routes */}

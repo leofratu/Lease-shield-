@@ -15,6 +15,11 @@ import {
 // Define blog posts data (replace with dynamic fetching later if needed)
 const blogPosts = [
   {
+    slug: 'using-lease-shield-ai-effectively',
+    title: 'How to Use Lease Shield AI Effectively',
+    excerpt: 'Tips for uploading documents, interpreting analysis reports, understanding scores, and leveraging AI...'
+  },
+  {
     slug: 'how-to-spot-lease-scams',
     title: 'How to Spot Common Rental Lease Scams',
     excerpt: 'Protect yourself from rental scams by learning common tactics scammers use...',
@@ -22,7 +27,7 @@ const blogPosts = [
   {
     slug: 'understanding-common-clauses',
     title: 'Decoding Your Lease: Understanding Common Clauses',
-    excerpt: 'A breakdown of common rental lease clauses like maintenance, pets, subletting...',
+    excerpt: 'A detailed breakdown of common rental lease clauses like rent, security deposit, maintenance, pets, subletting...'
   },
   {
     slug: 'negotiating-lease-terms',
