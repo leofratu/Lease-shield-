@@ -478,13 +478,16 @@ const LandingPage = () => {
                       <Tooltip title={`${bar.label}: ${bar.value}%`} placement="top">
                         <Zoom in={true} style={{ transitionDelay: `${100 * index + 500}ms` }}>
                           <Box
+                              aria-label={`${bar.label}: ${bar.value}%`}
                               sx={{
                                   width: '100%',
+                                  maxWidth: '50px',
                                   height: `${bar.value * 2.5}px`, // Scale height based on value (adjust multiplier as needed)
                                   bgcolor: bar.color,
                                   borderRadius: '4px 4px 0 0',
                                   transition: 'height 0.6s ease-out',
-                                  mb: 1
+                                  mb: 1,
+                                  mx: 'auto'
                               }}
                           />
                         </Zoom>
