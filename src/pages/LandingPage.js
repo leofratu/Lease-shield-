@@ -238,12 +238,14 @@ const LandingPage = () => {
 
   return (
     <Box sx={{ overflowX: 'hidden' }}>
-      {/* Add Blog Link to top right */}
+      {/* REMOVE old Blog Link from top right */}
+      {/* 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 2 }}>
         <Button component={RouterLink} to="/blog" variant="text" color="inherit">
           Blog
         </Button>
       </Box>
+      */}
 
       <Helmet>
         <title>AI Lease Analyzer & Lease Shield | Understand Your Rental Agreement</title>
@@ -324,6 +326,32 @@ const LandingPage = () => {
                     }}
                   >
                     {user ? 'Analyze New Lease' : 'Get Started Free'}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    component={RouterLink}
+                    to="/blog"
+                    sx={{
+                      color: 'white',
+                      borderColor: 'rgba(255, 255, 255, 0.7)',
+                      fontWeight: 'bold',
+                      fontSize: '1rem', // Match size roughly
+                      px: 4, // Match padding roughly
+                      py: 1.5, // Match padding roughly
+                      borderRadius: '25px', // Match shape
+                      transition: theme.transitions.create(['transform', 'box-shadow', 'background-color', 'border-color'], {
+                        duration: theme.transitions.duration.short,
+                        easing: theme.transitions.easing.easeInOut,
+                      }),
+                      '&:hover': {
+                        borderColor: 'white',
+                        bgcolor: 'rgba(255, 255, 255, 0.1)',
+                        transform: 'translateY(-3px)',
+                      },
+                    }}
+                  >
+                    View Blog
                   </Button>
                 </Stack>
                 <Box sx={{ mt: 4, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
