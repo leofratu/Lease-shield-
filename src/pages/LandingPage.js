@@ -405,6 +405,170 @@ const LandingPage = () => {
         </Paper>
       </Fade>
 
+      {/* Features Section */}
+      <Box id="features" sx={{ py: { xs: 6, md: 10 }, bgcolor: 'background.default' }}>
+        <Container maxWidth="lg">
+          <Typography variant={isMobile ? "h4" : "h3"} component="h2" align="center" gutterBottom sx={{ fontWeight: 'bold', mb: 6 }}>
+            Unlock Lease Confidence
+          </Typography>
+          <Grid container spacing={isMobile ? 4 : 6} justifyContent="center">
+            {features.map((feature, index) => (
+              <Grid item xs={12} sm={6} md={4} key={index} sx={{ display: 'flex' }}>
+                <Fade in={true} timeout={500 * (index + 1)}>
+                  <Card elevation={2} sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: 2, transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out', '&:hover': { transform: 'translateY(-5px)', boxShadow: 6 } }}>
+                    <CardContent sx={{ textAlign: 'center', flexGrow: 1 }}>
+                      <Avatar sx={{ bgcolor: 'primary.light', mx: 'auto', mb: 2, width: 60, height: 60 }}>
+                         {feature.icon}
+                      </Avatar>
+                      <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 'medium' }}>
+                        {feature.title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {feature.description}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Fade>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
+
+      {/* NEW: AI Landlord Section */}
+      <Box 
+         id="ai-landlord" 
+         sx={{ 
+           py: { xs: 6, md: 10 }, 
+           bgcolor: 'background.default', // Changed from secondary.main to default background
+           // color: 'secondary.contrastText' // Removed: Let text color inherit for light background
+         }}
+      >
+        <Container maxWidth="lg">
+          <Grid container spacing={4} alignItems="center">
+            <Grid item xs={12} md={6}>
+               <Zoom in={true} timeout={500}>
+                 <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
+                   <Typography variant="h2" component="h2" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
+                     Meet Your AI Landlord Assistant
+                   </Typography>
+                   <Typography variant="h6" paragraph sx={{ mb: 3, color: 'text.secondary' /* Adjusted for light background */ }}>
+                     Streamline tenant matching and property management with Lease Shield AI. Define your ideal tenant and let our AI find the best fit based on preferences and uploaded documents.
+                   </Typography>
+                   <List dense>
+                     <ListItem>
+                       <ListItemIcon sx={{ color: 'primary.main' /* Explicit color */ }}><CheckIcon /></ListItemIcon>
+                       <ListItemText primary="Automated Tenant Preference Matching" />
+                     </ListItem>
+                     <ListItem>
+                       <ListItemIcon sx={{ color: 'primary.main' /* Explicit color */ }}><CheckIcon /></ListItemIcon>
+                       <ListItemText primary="Document Analysis for Suitability" />
+                     </ListItem>
+                     <ListItem>
+                       <ListItemIcon sx={{ color: 'primary.main' /* Explicit color */ }}><CheckIcon /></ListItemIcon>
+                       <ListItemText primary="Reduces Vacancy Time" />
+                     </ListItem>
+                     <ListItem>
+                       <ListItemIcon sx={{ color: 'primary.main' /* Explicit color */ }}><CheckIcon /></ListItemIcon>
+                       <ListItemText primary="Objective, Data-Driven Insights" />
+                     </ListItem>
+                   </List>
+                   <Button
+                      variant="contained"
+                      color="primary" // Changed back to primary (blue)
+                      size="large"
+                      component={RouterLink}
+                      to="/real-estate-agent" // Link to the relevant page
+                      sx={{ mt: 3 }}
+                    >
+                      Try Landlord Portal
+                    </Button>
+                 </Box>
+               </Zoom>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Zoom in={true} timeout={700}>
+                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 3 }}>
+                   {/* Placeholder for a graph or illustrative image - using an icon for now */}
+                   <AutoGraphIcon sx={{ fontSize: { xs: 150, md: 250 }, color: 'secondary.main', /* Changed color */ opacity: 0.8 }} />
+                 </Box>
+              </Zoom>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+      {/* END NEW SECTION */}
+
+      {/* NEW: Landlord Efficiency Comparison Graph */}
+      <Box sx={{ py: { xs: 6, md: 8 }, bgcolor: 'alternate.main' /* Or background.default */ }}>
+        <Container maxWidth="lg">
+           <Typography variant="h4" component="h3" align="center" gutterBottom sx={{ fontWeight: 'bold', mb: 1 }}>
+             Faster, More Accurate Tenant Matching
+           </Typography>
+           <Typography variant="body1" align="center" color="text.secondary" sx={{ mb: 6 }}>
+              See how Lease Shield AI streamlines the process compared to traditional methods.
+           </Typography>
+           <Grid container spacing={5} alignItems="flex-end" justifyContent="center">
+             {/* Graph Representation */} 
+             {[ 
+                { label: 'Time to Find Suitable Tenant', traditional: 14, ai: 3, unit: 'days' },
+                { label: 'Tenant Suitability Match Rate', traditional: 70, ai: 95, unit: '%' },
+              ].map((metric, index) => (
+                <Grid item xs={10} sm={5} md={4} key={metric.label}>
+                  <Paper elevation={2} sx={{ p: 3, borderRadius: 2, textAlign: 'center', height: '100%' }}>
+                    <Typography variant="h6" gutterBottom>{metric.label}</Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', height: 150, mt: 2, mb: 1 }}>
+                      {/* Traditional Bar */} 
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                         <Tooltip title={`Traditional: ${metric.traditional}${metric.unit}`} placement="top">
+                           <Zoom in={true} style={{ transitionDelay: `${100 * index + 300}ms` }}>
+                             <Box
+                                 aria-label={`Traditional: ${metric.traditional}${metric.unit}`}
+                                 sx={{ 
+                                   width: 40, 
+                                   height: `${(metric.traditional / (metric.label.includes('Time') ? 20 : 100)) * 130}px`, // Scale height (adjust divisors)
+                                   bgcolor: 'grey.400',
+                                   borderRadius: '4px 4px 0 0',
+                                   transition: 'height 0.5s ease-out'
+                                 }} 
+                             />
+                           </Zoom>
+                         </Tooltip>
+                         <Typography variant="caption" sx={{ mt: 0.5 }}>Traditional</Typography>
+                      </Box>
+                      {/* AI Bar */} 
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                         <Tooltip title={`Lease Shield AI: ${metric.ai}${metric.unit}`} placement="top">
+                           <Zoom in={true} style={{ transitionDelay: `${100 * index + 400}ms` }}>
+                            <Box
+                               aria-label={`Lease Shield AI: ${metric.ai}${metric.unit}`}
+                               sx={{ 
+                                 width: 40, 
+                                 height: `${(metric.ai / (metric.label.includes('Time') ? 20 : 100)) * 130}px`, // Scale height (adjust divisors)
+                                 bgcolor: 'primary.main', 
+                                 borderRadius: '4px 4px 0 0',
+                                 transition: 'height 0.5s ease-out'
+                               }}
+                            />
+                           </Zoom>
+                         </Tooltip>
+                         <Typography variant="caption" sx={{ mt: 0.5 }}>Lease Shield AI</Typography>
+                      </Box>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                       {metric.label.includes('Time') ? 
+                         `Reduce time by ~${Math.round(100 - (metric.ai / metric.traditional * 100))}%` : 
+                         `Improve match rate by ~${Math.round(metric.ai - metric.traditional)}%` 
+                       } 
+                    </Typography>
+                  </Paper>
+                </Grid>
+              ))}
+           </Grid>
+        </Container>
+      </Box>
+      {/* END Landlord Graph */}
+
       {/* How It Works */}
       <Container maxWidth="lg" sx={{ mb: { xs: 6, md: 10 } }}>
         <Typography variant="h3" component="h2" gutterBottom sx={{ mb: 5, textAlign: 'center' }}>

@@ -17,18 +17,13 @@ import {
   ListItemText,
   ListItemIcon,
   IconButton,
-  Divider,
-  Alert
+  Alert,
+  FormGroup
 } from '@mui/material';
 import { 
     FileUpload as FileUploadIcon, 
     Clear as ClearIcon, 
-    Pets as PetsIcon, 
-    AttachMoney as AttachMoneyIcon,
-    SmokingRooms as SmokingRoomsIcon,
-    NoSmoking as NoSmokingIcon,
-    Description as DescriptionIcon, // For non-image files
-    Image as ImageIcon // For image files
+    Description as DescriptionIcon // For non-image files
 } from '@mui/icons-material';
 
 // Helper function to format currency (optional, but nice)
@@ -41,7 +36,7 @@ const RealEstateAgentPage = () => {
   const [files, setFiles] = useState([]);
   
   // Structured Preferences State
-  const [preferences, setPreferences] = useState({
+  const [structuredPreferences, setStructuredPreferences] = useState({
     petFriendly: false,
     smokingAllowed: false,
     rentRange: [1000, 3000], // Renamed from incomeRange, adjusted defaults
@@ -50,6 +45,13 @@ const RealEstateAgentPage = () => {
     minCreditScore: '',      // Added
     parkingRequired: false,   // Added
     furnishedRequired: false, // Added
+    utilitiesIncluded: { // Add new detailed preference
+        water: false,
+        gas: false,
+        electricity: false,
+        internet: false,
+    },
+    laundryType: 'none', // Add new preference: 'none', 'in_unit', 'shared'
     notes: '', 
   });
   
@@ -131,14 +133,27 @@ const RealEstateAgentPage = () => {
   // --- Preferences Form Logic ---
   const handlePreferenceChange = (event) => {
     const { name, value, type, checked } = event.target;
-    setPreferences(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' || type === 'switch' ? checked : value,
-    }));
+
+    // Handle nested state for utilitiesIncluded
+    if (name.startsWith('utilitiesIncluded.')) {
+      const utilityName = name.split('.')[1];
+      setStructuredPreferences(prev => ({
+        ...prev,
+        utilitiesIncluded: {
+          ...prev.utilitiesIncluded,
+          [utilityName]: checked
+        }
+      }));
+    } else {
+      setStructuredPreferences(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' || type === 'switch' ? checked : value,
+      }));
+    }
   };
 
   const handleSliderChange = (event, newValue) => {
-     setPreferences(prev => ({
+     setStructuredPreferences(prev => ({
          ...prev,
          rentRange: newValue,
      }));
@@ -148,8 +163,8 @@ const RealEstateAgentPage = () => {
   // --- API Submission Logic ---
   const handleSubmit = async () => {
     // Basic validation (can be enhanced)
-    if (files.length === 0 && !preferences.notes?.trim() && preferences.rentRange[0] === 1000 && preferences.rentRange[1] === 3000) {
-      setError('Please upload relevant files or specify some tenant preferences.');
+    if (files.length === 0 && !structuredPreferences.notes?.trim() /* Check other fields if necessary */) {
+      setError('Please upload relevant property documents or specify key tenant preferences.');
       return;
     }
     setIsLoading(true);
@@ -166,7 +181,7 @@ const RealEstateAgentPage = () => {
       const formData = new FormData();
       
       // Append structured preferences as a JSON string
-      formData.append('tenantPreferences', JSON.stringify(preferences));
+      formData.append('tenantPreferences', JSON.stringify(structuredPreferences));
 
       // Append files
       files.forEach((file) => {
@@ -246,246 +261,203 @@ const RealEstateAgentPage = () => {
         Real Estate Agent Portal (Landlord)
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Define your ideal tenant preferences and upload relevant property documents or images.
+        Define your ideal tenant preferences and upload relevant property documents or images. Our AI will analyze these to match potential tenants and highlight key lease points.
       </Typography>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       <Grid container spacing={3}>
-        {/* Preferences Form Section */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={2} sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Tenant Preferences</Typography>
-            <Grid container spacing={2} alignItems="center">
-                 <Grid item xs={6}>
-                    <FormControlLabel 
-                        control={
-                            <Switch 
-                                checked={preferences.petFriendly} 
-                                onChange={handlePreferenceChange} 
-                                name="petFriendly" 
-                                disabled={isLoading}
-                            />
-                        } 
-                        label="Pet Friendly" 
-                    />
-                 </Grid>
-                 <Grid item xs={6}>
-                    <FormControlLabel 
-                        control={
-                            <Switch 
-                                checked={preferences.smokingAllowed} 
-                                onChange={handlePreferenceChange} 
-                                name="smokingAllowed" 
-                                color="warning"
-                                disabled={isLoading}
-                            />
-                        } 
-                        label="Smoking Allowed" 
-                    />
-                 </Grid>
-                 
-                 {/* Row 2: Lease Duration & Max Occupants */}
-                 <Grid item xs={6}>
-                    <TextField
-                       fullWidth
-                       label="Pref. Lease Duration (Months)"
-                       name="leaseDurationMonths"
-                       type="number"
-                       value={preferences.leaseDurationMonths}
-                       onChange={handlePreferenceChange}
-                       variant="outlined"
-                       disabled={isLoading}
-                       InputProps={{ inputProps: { min: 1 } }} 
-                     />
-                 </Grid>
-                 <Grid item xs={6}>
-                    <TextField
-                       fullWidth
-                       label="Max Occupants"
-                       name="maxOccupants"
-                       type="number"
-                       value={preferences.maxOccupants}
-                       onChange={handlePreferenceChange}
-                       variant="outlined"
-                       placeholder="Any"
-                       disabled={isLoading}
-                       InputProps={{ inputProps: { min: 1 } }} 
-                     />
-                 </Grid>
-
-                 {/* Row 3: Min Credit Score & Switches */}
-                 <Grid item xs={6}>
-                     <TextField
-                       fullWidth
-                       label="Min Credit Score"
-                       name="minCreditScore"
-                       type="number"
-                       value={preferences.minCreditScore}
-                       onChange={handlePreferenceChange}
-                       variant="outlined"
-                       placeholder="Any"
-                       disabled={isLoading}
-                       InputProps={{ inputProps: { min: 300, max: 850 } }} 
-                     />
-                 </Grid>
-                 <Grid item xs={6} container alignItems="center"> {/* Container for switches */}
-                     <FormControlLabel 
-                        control={
-                            <Switch 
-                                checked={preferences.parkingRequired} 
-                                onChange={handlePreferenceChange} 
-                                name="parkingRequired" 
-                                disabled={isLoading}
-                            />
-                        } 
-                        label="Parking" 
-                        sx={{ mr: 1 }} // Adjust spacing
-                     />
-                     <FormControlLabel 
-                        control={
-                            <Switch 
-                                checked={preferences.furnishedRequired} 
-                                onChange={handlePreferenceChange} 
-                                name="furnishedRequired" 
-                                disabled={isLoading}
-                            />
-                        } 
-                        label="Furnished" 
-                     />
-                 </Grid>
-
-                 {/* Row 4: Rent Range Slider */}
-                 <Grid item xs={12}>
-                     <Typography gutterBottom>Desired Monthly Rent Range</Typography>
-                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                         <Typography sx={{ minWidth: '80px' }}>{formatCurrency(preferences.rentRange[0])}</Typography>
-                         <Slider
-                            value={preferences.rentRange}
-                            onChange={handleSliderChange}
-                            valueLabelDisplay="auto"
-                            getAriaLabel={() => 'Rent range slider'}
-                            valueLabelFormat={formatCurrency}
-                            min={500} // Adjusted range
-                            max={10000} // Adjusted range
-                            step={100} // Adjusted step
-                            marks={[ { value: 3000, label: formatCurrency(3000) } ]} // Adjusted mark
-                            disabled={isLoading}
-                            sx={{ mx: 1 }}
-                         />
-                         <Typography sx={{ minWidth: '80px' }}>{formatCurrency(preferences.rentRange[1])}</Typography>
-                     </Box>
-                 </Grid>
-
-                 {/* Row 5: Notes */}
-                 <Grid item xs={12}>
-                     <TextField
-                        fullWidth
-                        multiline
-                        rows={4}
-                        variant="outlined"
-                        label="Additional Notes / Preferences"
-                        name="notes"
-                        value={preferences.notes}
-                        onChange={handlePreferenceChange}
-                        placeholder="e.g., Specific amenities, background check requirements..."
-                        disabled={isLoading}
-                    />
-                 </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
-
         {/* File Upload Section */}
         <Grid item xs={12} md={6}>
-          <Paper 
-            {...getRootProps()} 
-            elevation={0} 
-            sx={{ 
-                p: 3, 
-                border: '2px dashed', 
-                borderColor: isDragActive ? 'primary.main' : 'grey.400', 
-                textAlign: 'center', 
+          <Paper elevation={2} sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>Upload Property Documents/Images</Typography>
+            <Box
+              {...getRootProps()}
+              sx={{
+                border: `2px dashed ${isDragActive ? 'primary.main' : 'grey.400'}`,
+                borderRadius: 1,
+                p: 3,
+                textAlign: 'center',
                 cursor: 'pointer',
-                backgroundColor: isDragActive ? 'action.hover' : 'background.default',
-                minHeight: '200px', // Ensure dropzone has some height
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center'
-            }}
-          >
-            <input {...getInputProps()} />
-            <FileUploadIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1 }}/>
-            {isDragActive ? (
-              <Typography>Drop the files here ...</Typography>
-            ) : (
-              <Typography>Drag 'n' drop files here, or click to select (Max 5)</Typography>
+                backgroundColor: isDragActive ? 'action.hover' : 'background.paper',
+                mb: 2,
+                '&:hover': { borderColor: 'primary.light' }
+              }}
+            >
+              <input {...getInputProps()} />
+              <FileUploadIcon sx={{ fontSize: 40, color: 'grey.500', mb: 1 }} />
+              {isDragActive ? (
+                <Typography>Drop the files here ...</Typography>
+              ) : (
+                <Typography>Drag 'n' drop up to 5 files here (PDF, DOCX, JPG, PNG), or click to select</Typography>
+              )}
+              <Typography variant="caption" display="block" color="text.secondary">Max 10MB per file</Typography>
+            </Box>
+            {files.length > 0 && (
+              <>
+                <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>Uploaded Files:</Typography>
+                <List dense>{files.map(renderFilePreview)}</List>
+              </>
             )}
-             <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-                (Images, PDF, DOCX, TXT accepted, max 10MB each)
-             </Typography>
           </Paper>
-          {/* File Preview List */}
-          {files.length > 0 && (
-              <Paper elevation={1} sx={{ mt: 2, p: 1 }}>
-                 <List dense>
-                     {files.map(renderFilePreview)}
-                 </List>
-              </Paper>
-          )}
         </Grid>
 
-        {/* Results Section */}
+        {/* Tenant Preferences Section */}
+        <Grid item xs={12} md={6}>
+          {/* Wrap preferences in a Paper component */}
+          <Paper elevation={2} sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>Define Ideal Tenant Preferences</Typography>
+
+            {/* Use FormGroup for better layout */}
+            <FormGroup>
+              {/* Rent Range Slider */}
+              <Typography gutterBottom sx={{ mt: 2 }}>Desired Monthly Rent Range:</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                 <Typography sx={{ minWidth: '70px' }}>{formatCurrency(structuredPreferences.rentRange[0])}</Typography>
+                 <Slider
+                   name="rentRange" // Name isn't directly used by handler but good practice
+                   value={structuredPreferences.rentRange}
+                   onChange={handleSliderChange}
+                   valueLabelDisplay="auto"
+                   valueLabelFormat={formatCurrency}
+                   min={500}
+                   max={10000}
+                   step={100}
+                   sx={{ mx: 1 }}
+                   disabled={isLoading}
+                 />
+                 <Typography sx={{ minWidth: '70px' }}>{formatCurrency(structuredPreferences.rentRange[1])}</Typography>
+               </Box>
+
+              {/* Switches for Boolean Preferences */}
+              <FormControlLabel
+                control={<Switch checked={structuredPreferences.petFriendly} onChange={handlePreferenceChange} name="petFriendly" disabled={isLoading} />}
+                label="Pets Allowed"
+                sx={{ mt: 1 }}
+              />
+              <FormControlLabel
+                control={<Switch checked={structuredPreferences.smokingAllowed} onChange={handlePreferenceChange} name="smokingAllowed" disabled={isLoading} />}
+                label="Smoking Allowed"
+              />
+               <FormControlLabel
+                control={<Switch checked={structuredPreferences.parkingRequired} onChange={handlePreferenceChange} name="parkingRequired" disabled={isLoading} />}
+                label="Requires Parking"
+              />
+               <FormControlLabel
+                control={<Switch checked={structuredPreferences.furnishedRequired} onChange={handlePreferenceChange} name="furnishedRequired" disabled={isLoading} />}
+                label="Requires Furnished"
+              />
+
+              {/* Text Fields for Numeric/String Preferences */}
+               <TextField
+                  label="Minimum Lease Duration (Months)"
+                  name="leaseDurationMonths"
+                  type="number"
+                  value={structuredPreferences.leaseDurationMonths}
+                  onChange={handlePreferenceChange}
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  margin="normal"
+                  disabled={isLoading}
+                  inputProps={{ min: "1" }} // Basic validation
+               />
+               <TextField
+                 label="Maximum Occupants"
+                 name="maxOccupants"
+                 type="number"
+                 value={structuredPreferences.maxOccupants}
+                 onChange={handlePreferenceChange}
+                 variant="outlined"
+                 size="small"
+                 fullWidth
+                 margin="normal"
+                 disabled={isLoading}
+                 inputProps={{ min: "1" }} // Basic validation
+               />
+               <TextField
+                 label="Minimum Credit Score (Optional)"
+                 name="minCreditScore"
+                 type="number"
+                 value={structuredPreferences.minCreditScore}
+                 onChange={handlePreferenceChange}
+                 variant="outlined"
+                 size="small"
+                 fullWidth
+                 margin="normal"
+                 disabled={isLoading}
+                 inputProps={{ min: "300", max: "850" }} // Basic validation
+               />
+
+              {/* Utilities Section */}
+              <Typography gutterBottom sx={{ mt: 2 }}>Utilities Included:</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                 <FormControlLabel control={<Switch size="small" checked={structuredPreferences.utilitiesIncluded.water} onChange={handlePreferenceChange} name="utilitiesIncluded.water" />} label="Water" />
+                 <FormControlLabel control={<Switch size="small" checked={structuredPreferences.utilitiesIncluded.gas} onChange={handlePreferenceChange} name="utilitiesIncluded.gas" />} label="Gas" />
+                 <FormControlLabel control={<Switch size="small" checked={structuredPreferences.utilitiesIncluded.electricity} onChange={handlePreferenceChange} name="utilitiesIncluded.electricity" />} label="Electricity" />
+                 <FormControlLabel control={<Switch size="small" checked={structuredPreferences.utilitiesIncluded.internet} onChange={handlePreferenceChange} name="utilitiesIncluded.internet" />} label="Internet" />
+              </Box>
+
+              {/* Laundry Type - Example using Radio or Select, here simplified with TextField for now */}
+               <TextField
+                 label="Laundry Availability (e.g., In-Unit, Shared, None)"
+                 name="laundryType" // Consider changing to a Select or Radio group later
+                 value={structuredPreferences.laundryType}
+                 onChange={handlePreferenceChange}
+                 variant="outlined"
+                 size="small"
+                 fullWidth
+                 margin="normal"
+                 disabled={isLoading}
+                 helperText="Specify laundry situation"
+               />
+
+              {/* Notes Text Field */}
+              <TextField
+                label="Other Preferences/Notes"
+                name="notes"
+                value={structuredPreferences.notes}
+                onChange={handlePreferenceChange}
+                multiline
+                rows={3}
+                variant="outlined"
+                fullWidth
+                margin="normal"
+                disabled={isLoading}
+                placeholder="e.g., No loud parties, specific move-in date requirements..."
+              />
+            </FormGroup> {/* End FormGroup */}
+          </Paper> {/* End Preferences Paper */}
+        </Grid>
+
+        {/* Submission and Results Section */}
+        <Grid item xs={12}>
+           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+             <Button
+               variant="contained"
+               color="primary"
+               size="large"
+               onClick={handleSubmit}
+               disabled={isLoading || files.length === 0} // Disable if loading or no files
+               startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+             >
+               {isLoading ? 'Analyzing...' : 'Analyze & Match Tenant Profile'}
+             </Button>
+           </Box>
+        </Grid>
+
         {extractedInfo && (
-           <Grid item xs={12}>
-              <Paper elevation={1} sx={{ mt: 3, p: 3, bgcolor: 'grey.50' }}>
-                <Typography variant="h6" gutterBottom>Analysis Results</Typography>
-                <Box component="pre" sx={{ 
-                    whiteSpace: 'pre-wrap', 
-                    wordWrap: 'break-word', 
-                    fontFamily: 'monospace', 
-                    bgcolor: '#eee', 
-                    p: 2, 
-                    borderRadius: 1,
-                    maxHeight: '400px', // Limit result height
-                    overflowY: 'auto' 
-                }}>
-                    {extractedInfo}
-                </Box>
-              </Paper>
-            </Grid>
+          <Grid item xs={12}>
+            <Paper elevation={2} sx={{ p: 3, mt: 3 }}>
+              <Typography variant="h6" gutterBottom>Analysis Results</Typography>
+              <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', backgroundColor: '#f5f5f5', p: 2, borderRadius: 1 }}>
+                {/* Display structured results nicely later */}
+                {JSON.stringify(extractedInfo, null, 2)} 
+              </Typography>
+            </Paper>
+          </Grid>
         )}
       </Grid>
-
-      {/* Sticky Footer for Action Button */}
-      <Paper 
-        elevation={3} 
-        sx={{ 
-            position: 'fixed', // Changed to fixed for consistent behavior
-            bottom: 0, 
-            left: 0, 
-            right: 0, 
-            p: 2, 
-            bgcolor: 'background.paper', 
-            zIndex: 1100, // Ensure it's above other content, adjust if needed
-            borderTop: '1px solid',
-            borderColor: 'divider',
-            display: 'flex',
-            justifyContent: 'flex-end' // Align button to the right
-        }}
-      >
-        <Button
-          variant="contained"
-          size="large"
-          onClick={handleSubmit}
-          disabled={isLoading || (files.length === 0 && !preferences.notes?.trim())} // Adjust condition based on minimum required input
-          startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-        >
-          {isLoading ? 'Processing...' : 'Analyze Preferences'}
-        </Button>
-        {/* Add "Save Draft" button here if needed later */}
-      </Paper>
     </Box>
   );
 };
