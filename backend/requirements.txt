@@ -8,3 +8,4 @@ gunicorn==20.1.0
 requests # Needed for Maxelpay API calls
 cryptography # Needed for Maxelpay payload encryption
 python-dotenv # Added for loading .env in dev/potentially prod fallback 
+Pillow # Added for image processing (PIL module) 
