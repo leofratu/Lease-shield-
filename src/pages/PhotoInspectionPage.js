@@ -25,7 +25,8 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Container
+  Container,
+  LinearProgress
 } from '@mui/material';
 import { 
     FileUpload as FileUploadIcon, 
@@ -108,6 +109,7 @@ const PhotoInspectionPage = () => {
   const [repairEstimate, setRepairEstimate] = useState(null); // Store overall cost estimate
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [analysisProgress, setAnalysisProgress] = useState(0); // Added state for progress
 
   // --- File Upload Logic (react-dropzone) ---
   const onDrop = useCallback((acceptedFiles, fileRejections) => {
@@ -191,6 +193,23 @@ const PhotoInspectionPage = () => {
     setError('');
     setInspectionResults(null);
     setRepairEstimate(null);
+    setAnalysisProgress(0); // Reset progress
+    let progressTimer = null; // Timer for simulation
+
+    // Start progress simulation
+    const targetDurationSeconds = 30; // Shorter target for potentially faster vision API
+    const maxSimulatedProgress = 95;
+    const intervalTimeMs = Math.max(100, (targetDurationSeconds * 1000) / maxSimulatedProgress);
+
+    progressTimer = setInterval(() => {
+      setAnalysisProgress(prev => {
+        const newProgress = Math.min(prev + 1, maxSimulatedProgress);
+        if (newProgress >= maxSimulatedProgress) {
+          clearInterval(progressTimer);
+        }
+        return newProgress;
+      });
+    }, intervalTimeMs);
 
     try {
       const user = auth.currentUser;
@@ -229,6 +248,10 @@ const PhotoInspectionPage = () => {
 
       // --- End IMPORTANT Section ---
 
+      // Stop simulation and jump to 100 on success/expected response format
+      clearInterval(progressTimer);
+      setAnalysisProgress(100); 
+
       if (!result.success) {
           throw new Error(result.error || 'API indicated an error during inspection.');
       }
@@ -243,8 +266,15 @@ const PhotoInspectionPage = () => {
     } catch (apiError) {
       console.error("Error processing photo inspection request:", apiError);
       setError(`Failed to process inspection: ${apiError.message}`);
+      // Stop simulation and reset progress on error
+      clearInterval(progressTimer);
+      setAnalysisProgress(0);
     } finally {
       setIsLoading(false);
+      // Ensure timer is cleared even if API call fails before reaching explicit clear points
+      if (progressTimer) {
+          clearInterval(progressTimer);
+      }
     }
   };
   // --- End API Submission Logic ---
@@ -472,6 +502,117 @@ const PhotoInspectionPage = () => {
                        </Paper>
                    </Grid>
                </Grid>
+           )}
+
+           {/* Progress Bar */} 
+           {isLoading && (
+             <Box sx={{ width: '100%', my: 2 }}>
+               <LinearProgress variant="determinate" value={analysisProgress} />
+               <Typography variant="caption" display="block" align="center" sx={{ mt: 0.5 }}>
+                 Analyzing photos... {analysisProgress}%
+               </Typography>
+             </Box>
+           )}
+
+           {error && (
+             <Alert severity="error" sx={{ mt: 2 }}>
+               {error}
+             </Alert>
+           )}
+
+           {/* Analysis Results Section */}
+           {inspectionResults && (
+             <Box sx={{ mt: 4 }}>
+               <Typography variant="h5" gutterBottom component="h2" sx={{ display: 'flex', alignItems: 'center' }}>
+                 <ReportProblemIcon sx={{ mr: 1 }} /> Inspection Report
+               </Typography>
+               <Grid container spacing={3}>
+                 {/* Issues per image */}
+                 {inspectionResults.map((result, index) => (
+                   <Grid item xs={12} md={6} key={index}>
+                     <Card elevation={2}>
+                       <CardMedia
+                         component="img"
+                         height="200"
+                         // Use result.imageUrl if available from backend, else placeholder or omit
+                         // image={result.imageUrl && result.imageUrl !== 'placeholder' ? result.imageUrl : `https://via.placeholder.com/300x200.png?text=${encodeURIComponent(result.fileName)}`}
+                         image={`https://via.placeholder.com/300x200.png?text=${encodeURIComponent(result.fileName)}`} // TEMP Placeholder
+                         alt={result.fileName}
+                         sx={{ objectFit: 'contain' }} 
+                       />
+                       <CardContent>
+                         <Typography gutterBottom variant="h6" component="div">
+                           {result.fileName}
+                         </Typography>
+                         {result.analysis_error && <Alert severity="warning" sx={{ mb: 1}}>Analysis failed for this image: {result.analysis_error}</Alert>}
+                         {result.processing_error && <Alert severity="error" sx={{ mb: 1}}>Could not process this image: {result.processing_error}</Alert>}
+                         {result.issues && result.issues.length > 0 ? (
+                           <List dense>
+                             {result.issues.map((issue) => (
+                               <ListItem key={issue.id} disablePadding>
+                                 <ListItemIcon sx={{ minWidth: 35 }}>
+                                    <Chip label={issue.severity} size="small" color={getSeverityColor(issue.severity)} sx={{ mr: 1 }} />
+                                 </ListItemIcon>
+                                 <ListItemText 
+                                   primary={issue.label}
+                                   secondary={issue.location}
+                                 />
+                               </ListItem>
+                             ))}
+                           </List>
+                         ) : (
+                           !result.analysis_error && !result.processing_error && <Typography variant="body2" color="text.secondary">No issues detected.</Typography>
+                         )}
+                       </CardContent>
+                     </Card>
+                   </Grid>
+                 ))}
+               </Grid>
+             </Box>
+           )}
+
+           {/* Repair Estimate Section */}
+           {repairEstimate && (
+             <Box sx={{ mt: 4 }}>
+               <Typography variant="h5" gutterBottom component="h2" sx={{ display: 'flex', alignItems: 'center' }}>
+                   <PriceCheckIcon sx={{ mr: 1 }} /> Estimated Repair Costs (Placeholders)
+               </Typography>
+               <Paper elevation={2} sx={{ p: 2 }}>
+                    <TableContainer>
+                       <Table size="small">
+                           <TableHead>
+                               <TableRow>
+                                   <TableCell>Task</TableCell>
+                                   <TableCell align="right">Estimated Cost</TableCell>
+                               </TableRow>
+                           </TableHead>
+                           <TableBody>
+                               {repairEstimate.lineItems && repairEstimate.lineItems.map((item) => (
+                                   <TableRow key={item.issueId}>
+                                       <TableCell component="th" scope="row">
+                                           {item.task}
+                                       </TableCell>
+                                       <TableCell align="right">${item.estimatedCost.toFixed(2)}</TableCell>
+                                   </TableRow>
+                               ))}
+                                <TableRow sx={{ '& > *': { borderBottom: 'unset' } }}>
+                                   <TableCell component="th" scope="row" sx={{ fontWeight: 'bold' }}>
+                                       Total Estimated Cost
+                                   </TableCell>
+                                   <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                        ${repairEstimate.totalEstimatedCost ? repairEstimate.totalEstimatedCost.toFixed(2) : '0.00'}
+                                   </TableCell>
+                               </TableRow>
+                           </TableBody>
+                       </Table>
+                   </TableContainer>
+                   {repairEstimate.notes && (
+                       <Typography variant="caption" display="block" sx={{ mt: 1.5, fontStyle: 'italic', color: 'text.secondary' }}>
+                           Note: {repairEstimate.notes}
+                       </Typography>
+                   )}
+               </Paper>
+             </Box>
            )}
 
         </Grid>

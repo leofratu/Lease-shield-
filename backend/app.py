@@ -1235,10 +1235,28 @@ def inspect_photos():
     }
     # --- End Mock Estimate ---
 
+    # --- Save to Firestore ---
+    inspection_id = None
+    try:
+        inspection_ref = db.collection('inspections').add({
+            'userId': user_id,
+            'status': 'complete', # Or indicate partial success if some files failed
+            'results': all_results,
+            'repairEstimate': final_estimate,
+            'createdAt': firestore.SERVER_TIMESTAMP
+        })
+        inspection_id = inspection_ref[1].id
+        print(f"Saved inspection {inspection_id} for user {user_id}")
+    except Exception as db_error:
+        print(f"Firestore saving error for inspection (user {user_id}): {db_error}")
+        # Proceed without saving, but log the error
+    # --- End Save to Firestore ---
+
     return jsonify({
         'success': True, # Indicate endpoint success, individual files might have errors
         'results': all_results, # Contains results per file, including potential errors
-        'repairEstimate': final_estimate
+        'repairEstimate': final_estimate,
+        'inspectionId': inspection_id # Return the ID if saved
     }), 200
 
 # --- End Photo Inspection Endpoint ---
@@ -1292,9 +1310,27 @@ def analyze_finance_document():
         }
         # --- End Placeholder Logic ---
 
+        # --- Save to Firestore ---
+        expense_id = None
+        try:
+            expense_ref = db.collection('expenses').add({
+                'userId': user_id,
+                'fileName': file.filename,
+                'status': 'complete', 
+                'extractedData': extracted_data,
+                'createdAt': firestore.SERVER_TIMESTAMP
+            })
+            expense_id = expense_ref[1].id
+            print(f"Saved expense {expense_id} for user {user_id}")
+        except Exception as db_error:
+             print(f"Firestore saving error for expense (user {user_id}): {db_error}")
+             # Proceed without saving
+        # --- End Save to Firestore ---
+
         return jsonify({
             'success': True,
-            'extractedData': extracted_data
+            'extractedData': extracted_data,
+            'expenseId': expense_id # Return the ID if saved
         }), 200
         
     else:

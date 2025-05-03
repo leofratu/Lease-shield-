@@ -37,7 +37,8 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  useTheme
 } from '@mui/material';
 import { 
   ExpandMore,
@@ -60,6 +61,7 @@ import { motion } from 'framer-motion';
 import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
 import { Link } from 'react-router-dom';
+import jsPDF from 'jspdf'; // Added for PDF generation
 
 // Helper function for score bar color
 const getScoreColor = (score) => {
@@ -538,7 +540,7 @@ const LeaseAnalysis = ({ showSnackbar }) => {
 
   // --- Helper Component for Displaying Results --- 
   // (Moved the complex result rendering logic here for clarity)
-  const AnalysisResultsDisplay = ({ analysisResult, score, fileName, leaseId, generateEmailDraft, handleDownloadJson, handleAnalyzeAnother }) => {
+  const AnalysisResultsDisplay = ({ analysisResult, score, fileName, leaseId, generateEmailDraft, handleDownloadJson, handleAnalyzeAnother, handleGeneratePdf }) => {
       if (!analysisResult) return null;
 
       // Destructure analysisResult for easier access
@@ -558,6 +560,7 @@ const LeaseAnalysis = ({ showSnackbar }) => {
                          <Stack direction="row" spacing={1} justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
                             <Button variant="outlined" size="small" startIcon={<Email />} onClick={generateEmailDraft}>Draft Email</Button>
                             <Button variant="outlined" size="small" startIcon={<FileDownload />} onClick={handleDownloadJson}>Download JSON</Button>
+                            <Button variant="outlined" size="small" startIcon={<FileDownload />} onClick={handleGeneratePdf} sx={{ mr: 1 }}>Download PDF</Button>
                             <Button variant="text" size="small" startIcon={<ReplayIcon/>} onClick={handleAnalyzeAnother}>Analyze Another</Button>
                          </Stack>
                      )}
@@ -693,6 +696,7 @@ const LeaseAnalysis = ({ showSnackbar }) => {
                 generateEmailDraft={generateEmailDraft}
                 handleDownloadJson={handleDownloadJson}
                 handleAnalyzeAnother={handleAnalyzeAnother}
+                handleGeneratePdf={handleGeneratePdf}
              />
              {/* ... Email Dialog ... */}
              <Dialog open={emailDialogOpen} onClose={() => setEmailDialogOpen(false)} fullWidth maxWidth="md">
@@ -758,6 +762,7 @@ const LeaseAnalysis = ({ showSnackbar }) => {
           generateEmailDraft={generateEmailDraft}
           handleDownloadJson={handleDownloadJson}
           handleAnalyzeAnother={handleAnalyzeAnother}
+          handleGeneratePdf={handleGeneratePdf}
         />
       ) : isMultiMode && multiAnalysisResults.length > 0 ? (
         // Display Multi-Analysis Results Table (Placeholder for now)
@@ -1033,5 +1038,97 @@ const LeaseAnalysis = ({ showSnackbar }) => {
     </Paper>
   );
  };
+
+ // --- NEW: PDF Generation --- 
+ const handleGeneratePdf = () => {
+   if (!analysisResult) return;
+
+   const doc = new jsPDF();
+   const margin = 15;
+   let yPos = margin;
+   const pageHeight = doc.internal.pageSize.height;
+   const contentWidth = doc.internal.pageSize.width - margin * 2;
+
+   // Function to add text and handle page breaks
+   const addText = (text, options, isTitle = false) => {
+     const fontSize = options.fontSize || 10;
+     doc.setFontSize(fontSize);
+     if (isTitle) {
+        doc.setFont(undefined, 'bold');
+     }
+     const lines = doc.splitTextToSize(text, contentWidth);
+     const textHeight = doc.getTextDimensions(lines).h;
+     
+     if (yPos + textHeight > pageHeight - margin) {
+       doc.addPage();
+       yPos = margin;
+     }
+     doc.text(lines, margin, yPos);
+     yPos += textHeight + (isTitle ? 3 : 1.5); // Add spacing
+     if (isTitle) {
+        doc.setFont(undefined, 'normal');
+     }
+   };
+
+   // Title
+   doc.setFontSize(18);
+   doc.text('Lease Shield AI - Analysis Report', margin, yPos);
+   yPos += 10;
+
+   // Overview
+   addText('Overview', { fontSize: 14 }, true);
+   if (analysisResult.extracted_data) {
+     Object.entries(analysisResult.extracted_data).forEach(([key, value]) => {
+       const formattedKey = key.replace(/_/g, ' '); // Replace underscores
+       addText(`${formattedKey}: ${value || 'Not Found'}`, { fontSize: 10 });
+     });
+   }
+   addText(`Overall Score: ${score}/100`, { fontSize: 12 });
+   yPos += 5; // Extra space after overview
+
+   // Clause Summaries
+   if (analysisResult.clause_summaries && Object.keys(analysisResult.clause_summaries).length > 0) {
+     addText('Clause Summaries', { fontSize: 14 }, true);
+     Object.entries(analysisResult.clause_summaries).forEach(([key, value]) => {
+        const formattedKey = key.replace(/_/g, ' ');
+        addText(formattedKey, { fontSize: 11 }, true);
+        addText(value || 'Not Found', { fontSize: 10 });
+        yPos += 2; // Space between clauses
+     });
+     yPos += 3; // Extra space after section
+   }
+
+   // Identified Risks
+   if (analysisResult.risks && analysisResult.risks.length > 0) {
+     addText('Identified Risks / Considerations', { fontSize: 14 }, true);
+     analysisResult.risks.forEach((risk, index) => {
+       addText(`${index + 1}. ${risk}`, { fontSize: 10 });
+     });
+     yPos += 3; // Extra space after section
+   }
+   
+   // Add Raw Analysis if present (e.g., if JSON parsing failed)
+   if (analysisResult.raw_analysis) {
+      addText('Raw Analysis Output (Parsing Error)', { fontSize: 14 }, true);
+      addText(analysisResult.raw_analysis, { fontSize: 8 });
+      yPos += 3;
+   }
+
+   // Footer
+   const pageCount = doc.internal.getNumberOfPages();
+   for (let i = 1; i <= pageCount; i++) {
+     doc.setPage(i);
+     doc.setFontSize(8);
+     doc.setTextColor(150);
+     doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width / 2, pageHeight - 10, { align: 'center' });
+     doc.text(`Generated by Lease Shield AI on ${new Date().toLocaleDateString()}`, margin, pageHeight - 10);
+   }
+
+   // Save the PDF
+   const fileName = lease?.fileName ? `LeaseAnalysis_${lease.fileName.split('.')[0]}.pdf` : 'LeaseAnalysisReport.pdf';
+   doc.save(fileName);
+   displaySuccess('PDF report generated successfully!');
+ };
+ // --- End PDF Generation ---
 
  export default LeaseAnalysis; 

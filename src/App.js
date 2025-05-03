@@ -6,6 +6,11 @@ import { useAuthState } from './hooks/useAuthState';
 import { useUserProfile } from './context/UserProfileContext';
 import ReactGA from 'react-ga4';
 import { UserProfileProvider } from './context/UserProfileContext';
+import { Box } from '@mui/material';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 
 // Pages
 import Login from './pages/Login';
@@ -31,6 +36,7 @@ import AdminPage from './pages/AdminPage';
 import RealEstateAgentPage from './pages/RealEstateAgentPage';
 import ExpenseScannerPage from './pages/ExpenseScannerPage';
 import PhotoInspectionPage from './pages/PhotoInspectionPage';
+import DashboardPage from './pages/DashboardPage';
 
 // Create theme
 const theme = createTheme({
@@ -283,7 +289,7 @@ function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Layout>
-                  <Dashboard />
+                  <DashboardPage />
                 </Layout>
               </ProtectedRoute>
             } />
