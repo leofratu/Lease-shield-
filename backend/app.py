@@ -18,6 +18,7 @@ import uuid # For unique order ID
 # Import the specific exception for permission errors
 from google.api_core.exceptions import PermissionDenied, GoogleAPIError 
 import datetime # Needed for daily scan logic
+import calendar # Added for days in month calculation
 # Add imports for file handling if needed (os is already imported)
 from PIL import Image # Potentially needed for image processing/validation
 import mimetypes # To determine image MIME type
@@ -1292,39 +1293,138 @@ def analyze_finance_document():
     if file and allowed_finance_file(file.filename):
         print(f"Received finance document: {file.filename}")
         
-        # --- Placeholder Analysis Logic ---
-        # In a real scenario:
-        # 1. Extract text/data (e.g., using PyPDF2 for PDF, OCR for images).
-        # 2. Pass extracted data to Gemini with a specific prompt for financial details.
-        # 3. Parse Gemini's response.
-        
-        # Mock extracted data based on filename hint
-        extracted_data = {
-            'fileName': file.filename,
-            'category': 'Utilities' if 'utility' in file.filename.lower() else 'Maintenance' if 'repair' in file.filename.lower() else 'Other',
-            'vendor': 'Mock Vendor Inc.',
-            'date': datetime.date.today().isoformat(),
-            'amount': 123.45,
-            'currency': 'USD',
-            'summary': 'Placeholder summary of the financial document.'
-        }
-        # --- End Placeholder Logic ---
+        extracted_data = None
+        last_error = None
+        analysis_input = None # Will be either text or image part
+        input_type = None # 'text' or 'image'
 
-        # --- Save to Firestore ---
-        expense_id = None
         try:
-            expense_ref = db.collection('expenses').add({
-                'userId': user_id,
-                'fileName': file.filename,
-                'status': 'complete', 
-                'extractedData': extracted_data,
-                'createdAt': firestore.SERVER_TIMESTAMP
-            })
-            expense_id = expense_ref[1].id
-            print(f"Saved expense {expense_id} for user {user_id}")
-        except Exception as db_error:
-             print(f"Firestore saving error for expense (user {user_id}): {db_error}")
-             # Proceed without saving
+            # --- Determine Input Type and Prepare --- 
+            file_content_type = file.content_type
+            file_stream = io.BytesIO(file.read())
+            file.seek(0) # Reset stream position after read
+            
+            if file_content_type == 'application/pdf':
+                extracted_text = extract_pdf_text(file_stream)
+                if extracted_text is None:
+                    return jsonify({'error': 'Failed to extract text from PDF'}), 500
+                if len(extracted_text) > MAX_TEXT_LENGTH: # Check text length
+                     return jsonify({'error': f'Extracted PDF text exceeds the maximum length of {MAX_TEXT_LENGTH} characters.'}), 413
+                analysis_input = extracted_text
+                input_type = 'text'
+            elif file_content_type in ['image/png', 'image/jpeg', 'image/jpg']:
+                 # Prepare image part for Gemini Vision
+                 image_bytes = file_stream.read()
+                 analysis_input = {
+                    "mime_type": file_content_type,
+                    "data": image_bytes
+                 }
+                 input_type = 'image'
+            else:
+                 return jsonify({'error': 'Unsupported file type for finance analysis. Use PDF, PNG, JPG, JPEG.'}), 400
+                 
+            # --- Gemini Analysis --- 
+            # Construct Prompt
+            prompt = f"""\
+            Analyze the provided financial document ({'text content' if input_type == 'text' else 'image'}).
+            Extract the following information and format the output ONLY as a single JSON object.
+            Do not include any text before or after the JSON object (e.g., no ```json markdown).
+            The JSON object must have a top-level key called 'extracted_data' containing these exact keys. Use null or "Not Found" if a value cannot be reasonably determined.
+            
+            -   `vendor`: The name of the vendor, merchant, or service provider.
+            -   `date`: The primary date on the document (e.g., invoice date, payment date) in YYYY-MM-DD format if possible, otherwise as found.
+            -   `amount`: The primary numerical total amount.
+            -   `currency`: The currency code (e.g., USD, EUR) or symbol (e.g., $).
+            -   `category`: Suggest a likely expense category (e.g., Utilities, Rent, Maintenance, Supplies, Travel, Food, Other).
+            -   `summary`: A brief one-sentence summary of the item or service.
+            
+            Example Output: {{"extracted_data": {{"vendor": "City Water Dept.", "date": "2023-10-26", "amount": 75.50, "currency": "USD", "category": "Utilities", "summary": "Monthly water bill payment."}}}}
+            
+            Document Content:
+            --- START --- 
+            {analysis_input if input_type == 'text' else '[IMAGE DATA PROVIDED]'} 
+            --- END --- 
+            
+            Output ONLY the JSON object.
+            """\"
+            
+            analysis_result_json = None
+            # Iterate through API keys
+            for i, api_key in enumerate(gemini_api_keys):
+                print(f"Attempting Finance Analysis with API key #{i+1} for {file.filename}")
+                try:
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel('gemini-1.5-flash') # Supports text and image
+                    
+                    # Send appropriate content type
+                    content_to_send = [prompt]
+                    if input_type == 'image':
+                        content_to_send.append(analysis_input) # Add image part
+                    elif input_type == 'text':
+                        # Text is already in the prompt, but check length again if needed
+                        pass 
+                    
+                    response = model.generate_content(content_to_send)
+                    
+                    cleaned_text = response.text.strip().lstrip('```json').rstrip('```').strip()
+                    analysis_result_json = json.loads(cleaned_text)
+                    print(f"Finance Analysis successful with API key #{i+1} for {file.filename}")
+                    break # Success
+                except json.JSONDecodeError as json_err:
+                    print(f"JSON Decode Error (key #{i+1}) for {file.filename}: {json_err}")
+                    print(f"Raw Gemini Response: {response.text if 'response' in locals() else 'N/A'}")
+                    last_error = json_err
+                    continue
+                except PermissionDenied as e:
+                    if "API key not valid" in str(e) or "invalid" in str(e).lower():
+                        print(f"Warning: Gemini API key #{i+1} failed (Invalid Key): {e}")
+                        last_error = e
+                        continue
+                    else:
+                        print(f"Gemini API Permission Error (key #{i+1}) for {file.filename}: {e}")
+                        last_error = e
+                        break
+                except GoogleAPIError as e: 
+                    print(f"Gemini API Error (key #{i+1}) for {file.filename}: {e}")
+                    last_error = e
+                    break
+                except Exception as e:
+                    print(f"Unexpected Error during Finance analysis (key #{i+1}) for {file.filename}: {e}")
+                    last_error = e
+                    break
+
+            # Process results
+            if analysis_result_json and 'extracted_data' in analysis_result_json:
+                extracted_data = analysis_result_json['extracted_data']
+                # Add filename back for consistency
+                extracted_data['fileName'] = file.filename 
+            elif last_error:
+                 print(f"Finance Analysis failed for {file.filename}. Last error: {last_error}")
+                 return jsonify({'error': f"AI analysis failed for the document. Last error: {last_error}"}), 500
+            else:
+                 print(f"Finance Analysis failed for {file.filename}, no result from Gemini.")
+                 return jsonify({'error': 'AI analysis could not extract data from the document.'}), 500
+
+        except Exception as processing_err:
+            print(f"Error processing finance file {file.filename}: {processing_err}")
+            return jsonify({'error': f"Failed to process the uploaded file: {processing_err}"}), 500
+
+        # --- Save to Firestore --- (Save the validated extracted_data)
+        expense_id = None
+        if extracted_data: # Only save if data was extracted successfully
+            try:
+                expense_ref = db.collection('expenses').add({
+                    'userId': user_id,
+                    'fileName': file.filename,
+                    'status': 'complete', 
+                    'extractedData': extracted_data, # Save the data extracted by Gemini
+                    'createdAt': firestore.SERVER_TIMESTAMP
+                })
+                expense_id = expense_ref[1].id
+                print(f"Saved expense {expense_id} for user {user_id}")
+            except Exception as db_error:
+                 print(f"Firestore saving error for expense (user {user_id}): {db_error}")
+                 # Proceed without saving, but log the error
         # --- End Save to Firestore ---
 
         return jsonify({
@@ -1337,6 +1437,111 @@ def analyze_finance_document():
         return jsonify({'error': 'Invalid file type. Allowed: PDF, PNG, JPG, JPEG'}), 400
         
 # --- End Finance Analysis Endpoint ---
+
+# --- NEW: Lease Calculator Endpoint ---
+@app.route('/api/calculate-lease', methods=['POST'])
+def calculate_lease_costs():
+    # Optional: Add authentication if needed
+    # auth_header = request.headers.get('Authorization')
+    # if not auth_header or not auth_header.startswith('Bearer '):
+    #     return jsonify({'error': 'Unauthorized'}), 401
+    # token = auth_header.split('Bearer ')[1]
+    # user_id = verify_token(token)
+    # if not user_id:
+    #     return jsonify({'error': 'Invalid token'}), 401
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Missing calculation data'}), 400
+        
+    # --- Input Parameters (Examples - Adjust based on frontend needs) ---
+    calculation_type = data.get('type') # e.g., 'rent_increase', 'prorated', 'total_cost'
+    base_rent = data.get('baseRent', 0)
+    increase_percentage = data.get('increasePercentage', 0)
+    start_date_str = data.get('startDate')
+    end_date_str = data.get('endDate')
+    move_in_date_str = data.get('moveInDate')
+    first_payment_date_str = data.get('firstPaymentDate') # e.g., 'YYYY-MM-01'
+    rent_due_day = data.get('rentDueDay', 1) # Day of month rent is due
+    
+    results = {}
+
+    # --- Calculation Logic ---
+    try:
+        if calculation_type == 'rent_increase':
+            if base_rent > 0 and increase_percentage > 0:
+                increase_amount = base_rent * (increase_percentage / 100.0)
+                new_rent = base_rent + increase_amount
+                results = {
+                    'increaseAmount': round(increase_amount, 2),
+                    'newRent': round(new_rent, 2)
+                }
+            else:
+                 raise ValueError("Base rent and increase percentage must be positive for rent increase calculation.")
+                 
+        elif calculation_type == 'prorated_rent':
+            # Requires move_in_date, first_payment_date, base_rent
+            if not move_in_date_str or not first_payment_date_str or base_rent <= 0:
+                 raise ValueError("Move-in date, first payment date, and base rent required for prorated calculation.")
+                 
+            move_in_date = datetime.datetime.strptime(move_in_date_str, '%Y-%m-%d').date()
+            first_payment_date = datetime.datetime.strptime(first_payment_date_str, '%Y-%m-%d').date()
+            
+            # Find the number of days in the move-in month
+            # Correct calculation for days in the month
+            next_month = move_in_date.replace(day=28) + datetime.timedelta(days=4) # Go to next month reliably
+            days_in_month = (next_month - datetime.timedelta(days=next_month.day)).day
+            
+            # Calculate days occupied in the first month
+            # Use the last day of the move-in month
+            days_occupied = (datetime.date(move_in_date.year, move_in_date.month, days_in_month) - move_in_date).days + 1
+            
+            if days_occupied < 0 or days_occupied > days_in_month:
+                 raise ValueError("Invalid date range for prorated calculation.")
+            
+            prorated_amount = (base_rent / days_in_month) * days_occupied
+            
+            results = {
+                'daysInMonth': days_in_month,
+                'daysOccupied': days_occupied,
+                'proratedRent': round(prorated_amount, 2)
+            }
+            
+        elif calculation_type == 'total_lease_cost':
+            # Requires start_date, end_date, base_rent
+            if not start_date_str or not end_date_str or base_rent <= 0:
+                 raise ValueError("Start date, end date, and base rent required for total cost calculation.")
+                 
+            start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            
+            # Calculate number of full months (this is approximate, needs refinement for exact days)
+            num_months = (end_date.year - start_date.year) * 12 + end_date.month - start_date.month
+            # A more precise calculation would involve iterating through months or days
+            
+            if num_months < 0:
+                 raise ValueError("End date must be after start date.")
+                 
+            # Simple approximation: assumes full months only
+            total_rent = base_rent * (num_months + 1) # Add 1 to include start month if simple month count
+            
+            results = {
+                'leaseDurationMonthsApprox': num_months + 1,
+                'totalRentApprox': round(total_rent, 2),
+                'note': 'Total rent is an approximation based on full months. Prorated amounts not included.'
+            }
+            
+        else:
+            return jsonify({'error': 'Invalid calculation type specified'}), 400
+
+        return jsonify({'success': True, 'calculation': results}), 200
+
+    except ValueError as ve:
+        return jsonify({'error': f"Invalid input data: {ve}"}), 400
+    except Exception as e:
+        print(f"Error during lease calculation: {e}")
+        return jsonify({'error': 'An unexpected error occurred during calculation.'}), 500
+# --- End Lease Calculator Endpoint ---
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8081))
