@@ -19,6 +19,8 @@ import uuid # For unique order ID
 from google.api_core.exceptions import PermissionDenied, GoogleAPIError 
 import datetime # Needed for daily scan logic
 # Add imports for file handling if needed (os is already imported)
+from PIL import Image # Potentially needed for image processing/validation
+import mimetypes # To determine image MIME type
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'}
 ALLOWED_FINANCE_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
 
@@ -1082,61 +1084,161 @@ def inspect_photos():
     if 'photos' not in request.files:
         return jsonify({'error': 'No photo files provided'}), 400
 
-    uploaded_files = request.files.getlist('photos') # Get list of files
+    uploaded_files = request.files.getlist('photos')
     
     if not uploaded_files or len(uploaded_files) == 0 or uploaded_files[0].filename == '':
          return jsonify({'error': 'No photos selected for upload'}), 400
 
-    processed_results = []
-    # --- Placeholder Analysis Logic ---
-    # In a real scenario, you would:
-    # 1. Securely save files temporarily or stream to cloud storage.
-    # 2. Pass file references/data to Gemini Vision API.
-    # 3. Process Gemini's response to structure the output.
+    all_results = [] # Store results for all images
+    all_issues = [] # Store issues across all images for cost estimate
 
+    # --- Gemini Vision Analysis Logic ---
     for file in uploaded_files:
-        if file and allowed_image_file(file.filename):
-            print(f"Received photo for inspection: {file.filename}")
-            # Mock analysis for this file
-            mock_issues = []
-            if "crack" in file.filename.lower():
-                 mock_issues.append({ 'id': f'issue-{uuid.uuid4()}', 'label': "Hairline Crack", 'severity': "Low", 'location': "Detected Area" })
-            if "stain" in file.filename.lower():
-                 mock_issues.append({ 'id': f'issue-{uuid.uuid4()}', 'label': "Water Stain", 'severity': "Medium", 'location': "Detected Area" })
-            if "rust" in file.filename.lower():
-                 mock_issues.append({ 'id': f'issue-{uuid.uuid4()}', 'label': "Rust/Corrosion", 'severity': "Medium", 'location': "Detected Area" })
-                 
-            processed_results.append({
-                "fileName": file.filename,
-                "imageUrl": "placeholder", # Ideally, return a URL if stored, or omit
-                "issues": mock_issues
-            })
-        else:
+        if not file or not allowed_image_file(file.filename):
             print(f"Skipped invalid file type: {file.filename}")
-            # Optionally inform the user about skipped files
+            continue
 
-    # Mock overall repair estimate
+        print(f"Processing photo for inspection: {file.filename}")
+        try:
+            # Read image data
+            image_bytes = file.read()
+            # Determine MIME type
+            mime_type = mimetypes.guess_type(file.filename)[0]
+            if not mime_type or not mime_type.startswith('image/'):
+                print(f"Skipping file with undetermined or non-image MIME type: {file.filename}")
+                continue
+                
+            # Prepare image part for Gemini
+            image_part = {
+                "mime_type": mime_type,
+                "data": image_bytes
+            }
+            
+            # Construct the prompt for Gemini Vision
+            prompt = f"""\
+            Analyze the provided image of a property (wall, fixture, roof, etc.). 
+            Identify and describe any visible damage, defects, or potential issues (e.g., cracks, stains, rust, holes, wear and tear, water damage, mold). 
+            For each distinct issue found, provide:
+            1. A short label (e.g., 'Hairline Crack', 'Water Stain', 'Minor Corrosion').
+            2. An estimated severity level (Low, Medium, High).
+            3. A brief description or location if possible.
+            
+            Format the output ONLY as a single JSON object containing a key called 'identified_issues\'. 
+            The value of 'identified_issues\' should be an array of objects, where each object represents a found issue and has the keys: 'label\', 'severity\', and 'description\'.
+            If no issues are found, return an empty array: {{"identified_issues": []}}
+            Do not include any text before or after the JSON object (e.g., no ```json markdown).
+            """
+
+            analysis_result_json = None
+            last_error = None
+            # Iterate through API keys (similar to analyze_lease)
+            for i, api_key in enumerate(gemini_api_keys):
+                print(f"Attempting Gemini Vision with API key #{i+1} for {file.filename}")
+                try:
+                    genai.configure(api_key=api_key)
+                    # Use a model that supports vision, e.g., gemini-pro-vision or 1.5 flash/pro
+                    model = genai.GenerativeModel('gemini-2.5-flash-preview-04-17') 
+                    
+                    # Generate content with prompt and image
+                    response = model.generate_content([prompt, image_part])
+                    
+                    # Clean and parse the response
+                    cleaned_text = response.text.strip().lstrip('```json').rstrip('```').strip()
+                    analysis_result_json = json.loads(cleaned_text)
+                    
+                    print(f"Gemini Vision successful with API key #{i+1} for {file.filename}")
+                    break # Success, exit key loop
+                    
+                except json.JSONDecodeError as json_err:
+                    print(f"JSON Decode Error (key #{i+1}) for {file.filename}: {json_err}")
+                    print(f"Raw Gemini Response: {response.text}")
+                    last_error = json_err # Store error and try next key
+                    continue
+                except PermissionDenied as e:
+                    if "API key not valid" in str(e) or "invalid" in str(e).lower():
+                        print(f"Warning: Gemini API key #{i+1} failed (Invalid Key): {e}")
+                        last_error = e
+                        continue # Try next key
+                    else:
+                        print(f"Gemini API Permission Error (key #{i+1}) for {file.filename}: {e}")
+                        last_error = e
+                        break # Non-key permission error, stop trying
+                except GoogleAPIError as e: 
+                    print(f"Gemini API Error (key #{i+1}) for {file.filename}: {e}")
+                    last_error = e
+                    # Potentially retry on specific errors like rate limits, but stop for now
+                    break
+                except Exception as e:
+                    print(f"Unexpected Error during Gemini vision (key #{i+1}) for {file.filename}: {e}")
+                    last_error = e
+                    break # Stop on unexpected errors
+
+            # Process results if analysis was successful
+            found_issues = []
+            if analysis_result_json and 'identified_issues' in analysis_result_json:
+                # Basic validation: ensure it's a list
+                if isinstance(analysis_result_json['identified_issues'], list):
+                    for issue in analysis_result_json['identified_issues']:
+                        # Basic validation of issue structure
+                        if isinstance(issue, dict) and 'label' in issue and 'severity' in issue and 'description' in issue:
+                            issue_id = f"issue-{uuid.uuid4()}" # Generate unique ID
+                            validated_issue = {
+                                'id': issue_id,
+                                'label': issue.get('label', 'Unknown'),
+                                'severity': issue.get('severity', 'Unknown'),
+                                'location': issue.get('description', 'N/A') # Use description as location for now
+                            }
+                            found_issues.append(validated_issue)
+                            all_issues.append(validated_issue) # Add to overall list for estimate
+                        else:
+                            print(f"Warning: Skipping malformed issue object in response for {file.filename}: {issue}")
+                else:
+                     print(f"Warning: 'identified_issues' is not a list in response for {file.filename}")
+            elif last_error:
+                 print(f"Gemini Vision failed for {file.filename} after trying all keys. Last error: {last_error}")
+                 # Optionally add an error marker to the result for this file
+            else:
+                 print(f"No issues identified or analysis failed for {file.filename}")
+                 
+            all_results.append({
+                "fileName": file.filename,
+                "imageUrl": "placeholder", # Replace if storing and serving images
+                "issues": found_issues, # Issues found for THIS image
+                "analysis_error": str(last_error) if last_error and not analysis_result_json else None # Include error if analysis failed
+            })
+
+        except Exception as file_proc_err:
+             print(f"Error processing file {file.filename}: {file_proc_err}")
+             # Add a result indicating this file failed processing
+             all_results.append({
+                "fileName": file.filename,
+                "imageUrl": "placeholder",
+                "issues": [],
+                "processing_error": str(file_proc_err)
+             })
+    # --- End Gemini Vision Analysis Logic ---
+
+    # --- Mock Repair Estimate (Based on combined issues) ---
     total_cost = 0
     line_items = []
-    for result in processed_results:
-        for issue in result['issues']:
-             cost = 50 # Default mock cost
-             if issue['severity'] == "Medium": cost = 150
-             if issue['severity'] == "High": cost = 300 # Example
-             line_items.append({ 'issueId': issue['id'], 'task': f"Repair {issue['label']}", 'estimatedCost': cost })
-             total_cost += cost
+    for issue in all_issues: # Iterate through issues from ALL processed images
+        cost = 50 # Default mock cost
+        if issue['severity'] == "Medium": cost = 150
+        if issue['severity'] == "High": cost = 300
+        line_items.append({ 'issueId': issue['id'], 'task': f"Repair {issue['label']}", 'estimatedCost': cost })
+        total_cost += cost
 
-    mock_estimate = {
+    final_estimate = {
         "lineItems": line_items,
         "totalEstimatedCost": total_cost,
-        "notes": "Mock estimates. Actual costs may vary."
+        "notes": "AI-based issue detection complete. Cost estimates are placeholders."
     }
-    # --- End Placeholder Logic ---
+    # --- End Mock Estimate ---
 
     return jsonify({
-        'success': True,
-        'results': processed_results, 
-        'repairEstimate': mock_estimate
+        'success': True, # Indicate endpoint success, individual files might have errors
+        'results': all_results, # Contains results per file, including potential errors
+        'repairEstimate': final_estimate
     }), 200
 
 # --- End Photo Inspection Endpoint ---
