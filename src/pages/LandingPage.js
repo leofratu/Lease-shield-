@@ -23,7 +23,8 @@ import {
   Zoom,
   useMediaQuery,
   useTheme,
-  Tooltip
+  Tooltip,
+  Link
 } from '@mui/material';
 import {
   SecurityOutlined as SecurityIcon,
@@ -45,7 +46,15 @@ import {
   VerifiedUserOutlined as VerifiedIcon,
   UploadFileOutlined as UploadFileIcon,
   Savings as SavingsIcon,
-  HomeWork as HomeWorkIcon
+  HomeWork as HomeWorkIcon,
+  Search as SearchIcon,
+  FindInPageOutlined as FindInPageIcon,
+  HandshakeOutlined as HandshakeIcon,
+  GroupAddOutlined as GroupAddIcon,
+  ReceiptLongOutlined as ReceiptLongIcon,
+  CameraAltOutlined as CameraAltIcon,
+  BuildOutlined as BuildIcon,
+  AnalyticsOutlined as AnalyticsIcon
 } from '@mui/icons-material';
 
 const LandingPage = () => {
@@ -93,8 +102,42 @@ const LandingPage = () => {
     }
   ];
 
-  // Features data
-  const features = [
+  // UPDATED: Core AI Modules/Features data
+  const coreModules = [
+    {
+      title: "New Lease Analysis",
+      description: "Upload a lease document (PDF/TXT) or paste text to get an AI-powered breakdown of clauses, risks, and key terms in minutes.",
+      icon: <DescriptionIcon sx={{ fontSize: 40 }} color="primary" />,
+      link: "#lease-analysis-detail"
+    },
+    {
+      title: "Tenant Matcher",
+      description: "Upload property details or tenant preferences (files/text) and let our AI pinpoint ideal matches—streamlining your tenant search and reducing vacancy time.",
+      icon: <HomeWorkIcon sx={{ fontSize: 40 }} color="primary" />,
+      link: "#tenant-matcher-detail"
+    },
+    {
+      title: "Lease Calculator",
+      description: "Estimate costs, compare scenarios, and understand the financial implications of different lease terms—right in your browser.",
+      icon: <CalculateIcon sx={{ fontSize: 40 }} color="primary" />,
+      link: "/calculator"
+    },
+    {
+      title: "Expense Scanner",
+      description: "Upload receipts or invoices (PDF, JPG, PNG) to automatically extract details, categorize expenses, and prepare them for your ledger.",
+      icon: <ReceiptLongIcon sx={{ fontSize: 40 }} color="primary" />,
+      link: "/expenses"
+    },
+    {
+      title: "Photo Inspector",
+      description: "Upload property photos (walls, fixtures, roof) to detect issues and estimate repair costs—instantly producing annotated reports and budgets.",
+      icon: <CameraAltIcon sx={{ fontSize: 40 }} color="primary" />,
+      link: "/inspection"
+    }
+  ];
+
+  // Features data (Kept for reference or potential reuse, but coreModules is now primary for the main feature grid)
+  const legacyFeatures = [
     {
       title: "Specialized AI Analysis",
       description: "Our AI, powered by Google Gemini, is specifically trained on legal lease documents to extract key information and identify potential issues with high accuracy.",
@@ -306,6 +349,18 @@ const LandingPage = () => {
                 >
                   Lease Shield AI uses advanced artificial intelligence, specifically trained on legal documents, to analyze your rental agreement, identify potential issues, and explain complex terms in plain language.
                 </Typography>
+                <Typography
+                  variant="subtitle1"
+                  paragraph
+                  sx={{
+                    opacity: 0.85,
+                    mb: 4,
+                    fontWeight: 'medium',
+                    fontSize: { xs: '0.9rem', md: '1.1rem' }
+                  }}
+                >
+                  All-in-One AI Suite: Lease Analysis • Tenant Matching • Lease Calculator • Expense Scanner • Photo Inspector
+                </Typography>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="flex-start">
                   <Button
                     variant="contained"
@@ -405,28 +460,37 @@ const LandingPage = () => {
         </Paper>
       </Fade>
 
-      {/* Features Section */}
+      {/* UPDATED Features Section -> Core AI Modules */}
       <Box id="features" sx={{ py: { xs: 6, md: 10 }, bgcolor: 'background.default' }}>
         <Container maxWidth="lg">
           <Typography variant={isMobile ? "h4" : "h3"} component="h2" align="center" gutterBottom sx={{ fontWeight: 'bold', mb: 6 }}>
-            Unlock Lease Confidence
+             Explore Our AI Modules
           </Typography>
-          <Grid container spacing={isMobile ? 4 : 6} justifyContent="center">
-            {features.map((feature, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index} sx={{ display: 'flex' }}>
+          <Grid container spacing={isMobile ? 3 : 4} justifyContent="center">
+            {coreModules.map((module, index) => (
+              <Grid item xs={12} sm={6} md={4} lg={2.4} key={index} sx={{ display: 'flex' }}>
                 <Fade in={true} timeout={500 * (index + 1)}>
-                  <Card elevation={2} sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: 2, transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out', '&:hover': { transform: 'translateY(-5px)', boxShadow: 6 } }}>
-                    <CardContent sx={{ textAlign: 'center', flexGrow: 1 }}>
+                  <Card elevation={2} sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRadius: 3, width: '100%', transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out', '&:hover': { transform: 'translateY(-5px)', boxShadow: 6 } }}>
+                    <CardContent sx={{ textAlign: 'center', flexGrow: 1, p: { xs: 2, md: 3 } }}>
                       <Avatar sx={{ bgcolor: 'primary.light', mx: 'auto', mb: 2, width: 60, height: 60 }}>
-                         {feature.icon}
+                         {module.icon}
                       </Avatar>
-                      <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 'medium' }}>
-                        {feature.title}
+                      <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 'medium', fontSize: '1.1rem' }}>
+                        {module.title}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {feature.description}
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {module.description}
                       </Typography>
                     </CardContent>
+                    <Box sx={{ p: 2, pt: 0, textAlign: 'center' }}>
+                       <Button 
+                         size="small" 
+                         href={module.link}
+                         sx={{ textTransform: 'none' }}
+                       >
+                         Learn More
+                       </Button>
+                    </Box>
                   </Card>
                 </Fade>
               </Grid>
@@ -435,7 +499,8 @@ const LandingPage = () => {
         </Container>
       </Box>
 
-      {/* NEW: AI Landlord Section */}
+      {/* AI Landlord Section (Now maybe Tenant Matcher focused or a separate section) */}
+      {/* Keeping this section for now, but it overlaps with the new Tenant Matcher detail */}
       <Box 
          id="ai-landlord" 
          sx={{ 
@@ -570,7 +635,7 @@ const LandingPage = () => {
       {/* END Landlord Graph */}
 
       {/* How It Works */}
-      <Container maxWidth="lg" sx={{ mb: { xs: 6, md: 10 } }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 6, md: 8 }, mb: { xs: 6, md: 10 } }}>
         <Typography variant="h3" component="h2" gutterBottom sx={{ mb: 5, textAlign: 'center' }}>
           Simple Steps to Clarity
         </Typography>
@@ -597,54 +662,113 @@ const LandingPage = () => {
         </Grid>
       </Container>
 
-      {/* Features Section */}
-      <Container maxWidth="lg" sx={{ mb: { xs: 6, md: 10 } }}>
-         <Typography variant="h3" component="h2" gutterBottom sx={{ mb: 5, textAlign: 'center' }}>
-           Core Features
-         </Typography>
-         <Grid container spacing={3}>
-           {features.map((feature, index) => {
-             const isLandlordFeature = feature.title === "Landlord Tenant Matching";
-             return (
-               <Grid item xs={12} sm={6} md={isLandlordFeature ? 4 : 3} key={index}> { /* Optional: give it slightly more width */}
-                 <Zoom in={true} style={{ transitionDelay: `${150 * index + 300}ms` }}>
-                   <Card
-                     elevation={isLandlordFeature ? 3 : 2} // Slightly more elevation
-                     sx={{
-                       height: '100%',
-                       display: 'flex',
-                       flexDirection: 'column',
-                       borderRadius: 3,
-                       transition: theme.transitions.create(['transform', 'box-shadow', 'background-color'], {
-                          duration: theme.transitions.duration.short,
-                          easing: theme.transitions.easing.easeInOut,
-                       }),
-                       p: isLandlordFeature ? 3 : 2.5, // More padding
-                       bgcolor: isLandlordFeature ? 'secondary.lighter' : 'background.paper', // Different background
-                       border: isLandlordFeature ? `1px solid ${theme.palette.secondary.main}` : 'none', // Optional border
-                       '&:hover': {
-                         transform: 'translateY(-5px)',
-                         boxShadow: theme.shadows[6]
-                       }
-                     }}
-                   >
-                     <CardContent sx={{ flexGrow: 1, textAlign: 'center', p: 1 }}>
-                       <Box sx={{ mb: 2, color: isLandlordFeature ? theme.palette.secondary.main : theme.palette.primary.main }}>
-                         {React.cloneElement(feature.icon, { sx: { fontSize: isLandlordFeature ? 48 : 40 } })} { /* Larger Icon */}
-                       </Box>
-                       <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 600 }}>{feature.title}</Typography>
-                       <Typography variant="body2" color="text.secondary">{feature.description}</Typography>
-                       {feature.title === "Secure & Confidential" && (
-                           <LockIcon fontSize="inherit" sx={{ color: 'text.disabled', verticalAlign: 'middle', ml: 0.5 }} />
-                        )} 
-                     </CardContent>
-                   </Card>
-                 </Zoom>
-               </Grid>
-             );
-            })}
-         </Grid>
-       </Container>
+      {/* --- START: New Lease Analysis Detail Section --- */}
+      <Box id="lease-analysis-detail" sx={{ py: { xs: 6, md: 10 }, bgcolor: theme.palette.mode === 'light' ? theme.palette.grey[50] : theme.palette.grey[900] }}>
+        <Container maxWidth="lg">
+          <Grid container spacing={6} alignItems="center">
+             {/* Image/Mockup Placeholder (Left Side) */}
+            <Grid item xs={12} md={6}>
+              <Zoom in={true} timeout={500}>
+                <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', height: { xs: 250, sm: 350, md: 400 }, bgcolor: 'grey.200' }}>
+                  {/* Replace with actual screenshot or graphic */}
+                  <DescriptionIcon sx={{ fontSize: { xs: 100, md: 150 }, color: 'grey.500' }} />
+                  {/* <img src="/path/to/lease-analysis-mockup.png" alt="Lease Analysis Mockup" style={{ width: '100%', height: 'auto', display: 'block' }} /> */}
+                </Paper>
+              </Zoom>
+            </Grid>
+            {/* Text Content (Right Side) */}
+            <Grid item xs={12} md={6}>
+               <Fade in={true} timeout={700}>
+                 <Box>
+                   <Typography variant={isMobile ? "h4" : "h3"} component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                     Upload. Analyze. Understand.
+                   </Typography>
+                   <Typography variant="h6" color="text.secondary" paragraph sx={{ mb: 3 }}>
+                     Get instant insights into your lease agreements. Our AI does the heavy lifting, so you don't have to.
+                   </Typography>
+                   <List dense sx={{ mb: 4 }}>
+                     {[
+                        { text: "AI extracts key dates, clauses & escalation schedules", icon: <CheckIcon color="primary" /> },
+                        { text: "Risk flags for unusual or unfavorable terms", icon: <CheckIcon color="primary" /> },
+                        { text: "Download plain-language summary report", icon: <CheckIcon color="primary" /> }
+                     ].map((item, index) => (
+                        <ListItem key={index} disableGutters>
+                           <ListItemIcon sx={{ minWidth: 35 }}>{item.icon}</ListItemIcon>
+                           <ListItemText primary={item.text} />
+                        </ListItem>
+                     ))}
+                   </List>
+                   <Button
+                      variant="contained"
+                      color="primary"
+                      size="large"
+                      onClick={handleGetStartedClick} // Or navigate('/analysis') etc.
+                      sx={{ borderRadius: '25px', px: 4, py: 1.5 }}
+                    >
+                      Analyze a Lease Now
+                    </Button>
+                 </Box>
+               </Fade>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+      {/* --- END: New Lease Analysis Detail Section --- */}
+
+      {/* --- START: Tenant Matcher Detail Section --- */}
+      <Box id="tenant-matcher-detail" sx={{ py: { xs: 6, md: 10 }, bgcolor: 'background.default' }}>
+        <Container maxWidth="lg">
+           {/* Reverse order for visual variation: Text Left, Image Right */}
+          <Grid container spacing={6} alignItems="center" direction={{ xs: 'column-reverse', md: 'row' }}>
+             {/* Text Content (Left Side) */}
+            <Grid item xs={12} md={6}>
+               <Fade in={true} timeout={700}>
+                 <Box>
+                   <Typography variant={isMobile ? "h4" : "h3"} component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                     Find the Perfect Fit Faster.
+                   </Typography>
+                   <Typography variant="h6" color="text.secondary" paragraph sx={{ mb: 3 }}>
+                     Leverage AI to match ideal tenants with your properties based on preferences, suitability analysis, and more.
+                   </Typography>
+                   <List dense sx={{ mb: 4 }}>
+                     {[
+                        { text: "Match criteria from uploaded profiles or structured inputs", icon: <CheckIcon color="primary" /> },
+                        { text: "Data-driven suitability score & recommendations", icon: <CheckIcon color="primary" /> },
+                        { text: "Automate outreach & track applicant status (Coming Soon!)", icon: <CheckIcon color="disabled" /> } // Indicate future feature
+                     ].map((item, index) => (
+                        <ListItem key={index} disableGutters>
+                           <ListItemIcon sx={{ minWidth: 35 }}>{item.icon}</ListItemIcon>
+                           <ListItemText primary={item.text} />
+                        </ListItem>
+                     ))}
+                   </List>
+                   <Button
+                      variant="contained"
+                      color="primary"
+                      size="large"
+                      component={RouterLink}
+                      to="/real-estate-agent" // Link to the relevant portal/page
+                      sx={{ borderRadius: '25px', px: 4, py: 1.5 }}
+                    >
+                      Explore Tenant Matching
+                    </Button>
+                 </Box>
+               </Fade>
+            </Grid>
+            {/* Image/Mockup Placeholder (Right Side) */}
+            <Grid item xs={12} md={6}>
+              <Zoom in={true} timeout={500}>
+                <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', height: { xs: 250, sm: 350, md: 400 }, bgcolor: 'grey.200' }}>
+                  {/* Replace with actual screenshot or graphic */}
+                  <HomeWorkIcon sx={{ fontSize: { xs: 100, md: 150 }, color: 'grey.500' }} />
+                  {/* <img src="/path/to/tenant-matcher-mockup.png" alt="Tenant Matcher Mockup" style={{ width: '100%', height: 'auto', display: 'block' }} /> */}
+                </Paper>
+              </Zoom>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+      {/* --- END: Tenant Matcher Detail Section --- */}
 
       {/* --- Accuracy Comparison Section --- */}
       <Box sx={{ bgcolor: 'alternate.main', py: { xs: 6, md: 8 } }}> { /* Use a slightly different background */}
@@ -1013,6 +1137,20 @@ const LandingPage = () => {
           ))}
         </Stack>
       </Container>
+
+      {/* --- Footer Update --- */}
+      <Container maxWidth="lg" sx={{ py: 3, borderTop: `1px solid ${theme.palette.divider}` }}>
+        <Typography variant="body2" color="text.secondary" align="center">
+          © {new Date().getFullYear()} Lease Shield AI. All rights reserved.
+        </Typography>
+        {/* NEW Reminder Line */}
+        <Typography variant="caption" color="text.secondary" align="center" display="block" sx={{ mt: 1 }}>
+          Lease Shield AI now includes Lease Analysis, Tenant Matcher, Lease Calculator, Expense Scanner, and Photo Inspector—all in one secure platform.
+        </Typography>
+        {/* Add other footer links if needed */}
+      </Container>
+      {/* --- End Footer Update --- */}
+
     </Box>
   );
 };

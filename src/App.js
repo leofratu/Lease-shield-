@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { useAuthState } from './hooks/useAuthState';
 import { useUserProfile } from './context/UserProfileContext';
 import ReactGA from 'react-ga4';
+import { UserProfileProvider } from './context/UserProfileContext';
 
 // Pages
 import Login from './pages/Login';
@@ -28,6 +29,8 @@ import TenantRightsOverview from './pages/blog/TenantRightsOverview';
 import UsingLeaseShieldAIEffectively from './pages/blog/UsingLeaseShieldAIEffectively';
 import AdminPage from './pages/AdminPage';
 import RealEstateAgentPage from './pages/RealEstateAgentPage';
+import ExpenseScannerPage from './pages/ExpenseScannerPage';
+import PhotoInspectionPage from './pages/PhotoInspectionPage';
 
 // Create theme
 const theme = createTheme({
@@ -217,129 +220,145 @@ function App() {
   // --- End Backend Pinger ---
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Router>
-        <RouteChangeTracker />
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={
-            <Layout showAuthButtons={true}>
-              <LandingPage />
-            </Layout>
-          } />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/pricing" element={
-             <Layout showAuthButtons={true}>
-                <Pricing />
-             </Layout>
-          } />
-          <Route path="/trial" element={<TrialRouteHandler />} />
-          
-          {/* Public Blog Routes */}
-          <Route path="/blog" element={
-            <Layout showAuthButtons={true}>
-              <BlogIndexPage />
-            </Layout>
-          } />
-          <Route path="/blog/how-to-spot-lease-scams" element={
-            <Layout showAuthButtons={true}>
-              <HowToSpotLeaseScams />
-            </Layout>
-          } />
-           <Route path="/blog/understanding-common-clauses" element={
-            <Layout showAuthButtons={true}>
-              <UnderstandingCommonClauses />
-            </Layout>
-          } />
-           <Route path="/blog/negotiating-lease-terms" element={
-            <Layout showAuthButtons={true}>
-              <NegotiatingLeaseTerms />
-            </Layout>
-          } />
-           <Route path="/blog/lease-red-flags" element={
-            <Layout showAuthButtons={true}>
-              <LeaseRedFlags />
-            </Layout>
-          } />
-           <Route path="/blog/tenant-rights-overview" element={
-            <Layout showAuthButtons={true}>
-              <TenantRightsOverview />
-            </Layout>
-          } />
-          <Route path="/blog/using-lease-shield-ai-effectively" element={
-            <Layout showAuthButtons={true}>
-              <UsingLeaseShieldAIEffectively />
-            </Layout>
-          } />
-          {/* END Public Blog Routes */}
-          
-          {/* Protected routes */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Layout>
-                <Dashboard />
+    <UserProfileProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Router>
+          <RouteChangeTracker />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={
+              <Layout showAuthButtons={true}>
+                <LandingPage />
               </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/analysis" element={
-            <ProtectedRoute>
-              <Layout>
-                <LeaseAnalysis />
+            } />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/pricing" element={
+               <Layout showAuthButtons={true}>
+                  <Pricing />
+               </Layout>
+            } />
+            <Route path="/trial" element={<TrialRouteHandler />} />
+            
+            {/* Public Blog Routes */}
+            <Route path="/blog" element={
+              <Layout showAuthButtons={true}>
+                <BlogIndexPage />
               </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/analysis/:leaseId" element={
-            <ProtectedRoute>
-              <Layout>
-                <LeaseAnalysis />
+            } />
+            <Route path="/blog/how-to-spot-lease-scams" element={
+              <Layout showAuthButtons={true}>
+                <HowToSpotLeaseScams />
               </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/calculator" element={
-            <ProtectedRoute>
-              <Layout>
-                <LeaseCalculator />
+            } />
+             <Route path="/blog/understanding-common-clauses" element={
+              <Layout showAuthButtons={true}>
+                <UnderstandingCommonClauses />
               </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/manager" element={
-            <ProtectedRoute requirePaid={true}>
-              <Layout>
-                <LeaseManager />
+            } />
+             <Route path="/blog/negotiating-lease-terms" element={
+              <Layout showAuthButtons={true}>
+                <NegotiatingLeaseTerms />
               </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Layout>
-                <Profile />
+            } />
+             <Route path="/blog/lease-red-flags" element={
+              <Layout showAuthButtons={true}>
+                <LeaseRedFlags />
               </Layout>
-            </ProtectedRoute>
-          } />
-          <Route path="/real-estate-agent" element={
-            <ProtectedRoute>
-              <Layout>
-                <RealEstateAgentPage />
+            } />
+             <Route path="/blog/tenant-rights-overview" element={
+              <Layout showAuthButtons={true}>
+                <TenantRightsOverview />
               </Layout>
-            </ProtectedRoute>
-          } />
+            } />
+            <Route path="/blog/using-lease-shield-ai-effectively" element={
+              <Layout showAuthButtons={true}>
+                <UsingLeaseShieldAIEffectively />
+              </Layout>
+            } />
+            {/* END Public Blog Routes */}
+            
+            {/* Protected routes */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/analysis" element={
+              <ProtectedRoute>
+                <Layout>
+                  <LeaseAnalysis />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/analysis/:leaseId" element={
+              <ProtectedRoute>
+                <Layout>
+                  <LeaseAnalysis />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/calculator" element={
+              <ProtectedRoute>
+                <Layout>
+                  <LeaseCalculator />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/manager" element={
+              <ProtectedRoute requirePaid={true}>
+                <Layout>
+                  <LeaseManager />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Layout>
+                  <Profile />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/real-estate-agent" element={
+              <ProtectedRoute>
+                <Layout>
+                  <RealEstateAgentPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/expense-scanner" element={
+              <ProtectedRoute>
+                <Layout>
+                  <ExpenseScannerPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/photo-inspection" element={
+              <ProtectedRoute>
+                <Layout>
+                  <PhotoInspectionPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
 
-          {/* Admin Route - Protected by login, authorization checked inside AdminPage */}
-          <Route path="/admin" element={
-            <ProtectedRoute>
-              <Layout>
-                <AdminPage />
-              </Layout>
-            </ProtectedRoute>
-          } />
-          
-          {/* 404 Not Found */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Router>
-    </ThemeProvider>
+            {/* Admin Route - Protected by login, authorization checked inside AdminPage */}
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <Layout>
+                  <AdminPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            {/* 404 Not Found */}
+            <Route path="*" element={<Layout><NotFound /></Layout>} />
+          </Routes>
+        </Router>
+      </ThemeProvider>
+    </UserProfileProvider>
   );
 }
 

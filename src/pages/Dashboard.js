@@ -40,7 +40,9 @@ import {
   Star as StarIcon,
   Upgrade as UpgradeIcon,
   Article as ArticleIcon,
-  HomeWork as HomeWorkIcon
+  HomeWork as HomeWorkIcon,
+  ReceiptLong as ReceiptIcon,
+  CameraAlt as CameraAltIcon
 } from '@mui/icons-material';
 import { collection, query, where, orderBy, getDocs, Timestamp, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
@@ -316,12 +318,12 @@ const Dashboard = ({ showSnackbar }) => {
                 </Card>
             </Grid>
 
-            {/* Add the NEW Real Estate Agent Feature Card HERE */}
+            {/* Real Estate Agent Tool Card */}
             <Grid item xs={12} sm={6} md={4}>
                 <Card elevation={2} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-5px)' } }}>
                     <CardContent sx={{ flexGrow: 1 }}>
                         <HomeWorkIcon sx={{ fontSize: 40, color: 'secondary.main', mb: 1 }} />
-                        <Typography variant="h6" component="h2" gutterBottom>Real Estate Agent Tool (Landlord)</Typography>
+                        <Typography variant="h6" component="h2" gutterBottom>Tenant Matcher</Typography>
                         <Typography variant="body2" color="text.secondary">
                             Upload property details or tenant preferences (files/text) to automatically identify matching criteria and streamline your tenant search.
                         </Typography>
@@ -363,6 +365,55 @@ const Dashboard = ({ showSnackbar }) => {
                     </CardActions>
                 </Card>
             </Grid>
+
+            {/* Expense Scanner Card */}
+            <Grid item xs={12} sm={6} md={4}>
+                <Card elevation={2} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-5px)' } }}>
+                    <CardContent sx={{ flexGrow: 1 }}>
+                        <ReceiptIcon sx={{ fontSize: 40, color: 'info.main', mb: 1 }} />
+                        <Typography variant="h6" component="h2" gutterBottom>Expense Scanner</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Upload receipts or invoices (PDF, JPG, PNG) to automatically extract details, categorize expenses, and prepare for your ledger.
+                        </Typography>
+                    </CardContent>
+                    <CardActions sx={{ justifyContent: 'flex-end' }}>
+                        <Button 
+                          variant="contained"
+                          color="info"
+                          startIcon={<ReceiptIcon />}
+                          onClick={() => navigate('/expense-scanner')}
+                          sx={{ m: 1 }}
+                        >
+                            Scan Expenses
+                        </Button>
+                    </CardActions>
+                </Card>
+            </Grid>
+
+            {/* Photo Inspector Card */}
+            <Grid item xs={12} sm={6} md={4}>
+                <Card elevation={2} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-5px)' } }}>
+                    <CardContent sx={{ flexGrow: 1 }}>
+                        <CameraAltIcon sx={{ fontSize: 40, color: 'warning.main', mb: 1 }} />
+                        <Typography variant="h6" component="h2" gutterBottom>Photo Inspector</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                             Upload property photos (walls, fixtures, roof) to automatically detect issues and estimate potential repair costs.
+                        </Typography>
+                    </CardContent>
+                    <CardActions sx={{ justifyContent: 'flex-end' }}>
+                        <Button 
+                          variant="contained"
+                          color="warning"
+                          startIcon={<CameraAltIcon />}
+                          onClick={() => navigate('/photo-inspection')}
+                          sx={{ m: 1 }}
+                        >
+                            Inspect Photos
+                        </Button>
+                    </CardActions>
+                </Card>
+            </Grid>
+
         </Grid>
 
         {/* Recent Analyses Section */}

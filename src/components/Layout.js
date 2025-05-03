@@ -24,7 +24,8 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
-  Link as MuiLink
+  Link as MuiLink,
+  ListSubheader
 } from '@mui/material';
 import { 
   Menu as MenuIcon, 
@@ -33,7 +34,9 @@ import {
   Calculate, 
   FolderShared,
   ChevronRight,
-  HomeWork
+  HomeWork,
+  ReceiptLong as ReceiptIcon,
+  CameraAlt as CameraAltIcon
 } from '@mui/icons-material';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
@@ -86,11 +89,30 @@ const Layout = ({ children, showAuthButtons = false }) => {
     setAnchorEl(null);
   };
 
-  const menuItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
-    { text: 'Lease Analysis', icon: <Description />, path: '/analysis' },
-    { text: 'Lease Calculator', icon: <Calculate />, path: '/calculator' },
-    { text: 'Real Estate Agent (Landlord)', icon: <HomeWork />, path: '/real-estate-agent' },
+  // Restructure menuItems into groups
+  const menuGroups = [
+    {
+      title: 'Main',
+      items: [
+        { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
+      ]
+    },
+    {
+       title: 'Lease Tools',
+       items: [
+         { text: 'Lease Analysis', icon: <Description />, path: '/analysis' },
+         { text: 'Lease Calculator', icon: <Calculate />, path: '/calculator' },
+       ]
+    },
+    {
+       title: 'Property Tools',
+       items: [
+         { text: 'Tenant Matcher', icon: <HomeWork />, path: '/real-estate-agent' }, // Renamed slightly for clarity
+         { text: 'Expense Scanner', icon: <ReceiptIcon />, path: '/expense-scanner' },
+         { text: 'Photo Inspector', icon: <CameraAltIcon />, path: '/photo-inspection' },
+       ]
+    }
+    // Add more groups here as needed
   ];
 
   const drawer = (
@@ -104,18 +126,34 @@ const Layout = ({ children, showAuthButtons = false }) => {
         </IconButton>
       </Box>
       <Divider />
-      <List>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton 
-              component={RouterLink} 
-              to={item.path} 
-              onClick={() => setDrawerOpen(false)}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItemButton>
-          </ListItem>
+      {/* Update List rendering to handle groups */}
+      <List
+        sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}
+        component="nav"
+        aria-labelledby="nested-list-subheader"
+        // Remove subheader prop if not using a single top-level one
+      >
+        {menuGroups.map((group, groupIndex) => (
+          <React.Fragment key={group.title}> 
+             {/* Add divider between groups, except before the first one */}
+            {groupIndex > 0 && <Divider sx={{ my: 1 }} />}
+            <ListSubheader component="div" disableSticky sx={{ bgcolor: 'transparent', lineHeight: '30px' /* Adjust styling */ }}>
+              {group.title}
+            </ListSubheader>
+            {group.items.map((item) => (
+              <ListItem key={item.text} disablePadding sx={{ pl: 1 /* Indent items slightly */ }}>
+                <ListItemButton 
+                  component={RouterLink} 
+                  to={item.path} 
+                  onClick={() => setDrawerOpen(false)}
+                  sx={{ borderRadius: 1 }}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.text} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </React.Fragment>
         ))}
       </List>
     </Box>
