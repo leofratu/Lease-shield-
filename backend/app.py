@@ -18,6 +18,9 @@ import uuid # For unique order ID
 # Import the specific exception for permission errors
 from google.api_core.exceptions import PermissionDenied, GoogleAPIError 
 import datetime # Needed for daily scan logic
+# Add imports for file handling if needed (os is already imported)
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'}
+ALLOWED_FINANCE_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
 
 # Placeholder for the actual PayID19 library - replace if needed
 try:
@@ -1055,6 +1058,147 @@ def create_commercial_user():
         return jsonify({'error': 'Failed to get new user ID after creation'}), 500
 
 # --- End Admin Routes --- 
+
+# --- NEW: Photo Inspection Endpoint ---
+def allowed_image_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+
+@app.route('/api/inspect-photos', methods=['POST'])
+def inspect_photos():
+    if db is None:
+        return jsonify({'error': 'Server configuration error: Database unavailable.'}), 500
+
+    # --- Authorization --- 
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Unauthorized'}), 401
+    token = auth_header.split('Bearer ')[1]
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'error': 'Invalid token'}), 401
+
+    # --- File Handling ---
+    if 'photos' not in request.files:
+        return jsonify({'error': 'No photo files provided'}), 400
+
+    uploaded_files = request.files.getlist('photos') # Get list of files
+    
+    if not uploaded_files or len(uploaded_files) == 0 or uploaded_files[0].filename == '':
+         return jsonify({'error': 'No photos selected for upload'}), 400
+
+    processed_results = []
+    # --- Placeholder Analysis Logic ---
+    # In a real scenario, you would:
+    # 1. Securely save files temporarily or stream to cloud storage.
+    # 2. Pass file references/data to Gemini Vision API.
+    # 3. Process Gemini's response to structure the output.
+
+    for file in uploaded_files:
+        if file and allowed_image_file(file.filename):
+            print(f"Received photo for inspection: {file.filename}")
+            # Mock analysis for this file
+            mock_issues = []
+            if "crack" in file.filename.lower():
+                 mock_issues.append({ 'id': f'issue-{uuid.uuid4()}', 'label': "Hairline Crack", 'severity': "Low", 'location': "Detected Area" })
+            if "stain" in file.filename.lower():
+                 mock_issues.append({ 'id': f'issue-{uuid.uuid4()}', 'label': "Water Stain", 'severity': "Medium", 'location': "Detected Area" })
+            if "rust" in file.filename.lower():
+                 mock_issues.append({ 'id': f'issue-{uuid.uuid4()}', 'label': "Rust/Corrosion", 'severity': "Medium", 'location': "Detected Area" })
+                 
+            processed_results.append({
+                "fileName": file.filename,
+                "imageUrl": "placeholder", # Ideally, return a URL if stored, or omit
+                "issues": mock_issues
+            })
+        else:
+            print(f"Skipped invalid file type: {file.filename}")
+            # Optionally inform the user about skipped files
+
+    # Mock overall repair estimate
+    total_cost = 0
+    line_items = []
+    for result in processed_results:
+        for issue in result['issues']:
+             cost = 50 # Default mock cost
+             if issue['severity'] == "Medium": cost = 150
+             if issue['severity'] == "High": cost = 300 # Example
+             line_items.append({ 'issueId': issue['id'], 'task': f"Repair {issue['label']}", 'estimatedCost': cost })
+             total_cost += cost
+
+    mock_estimate = {
+        "lineItems": line_items,
+        "totalEstimatedCost": total_cost,
+        "notes": "Mock estimates. Actual costs may vary."
+    }
+    # --- End Placeholder Logic ---
+
+    return jsonify({
+        'success': True,
+        'results': processed_results, 
+        'repairEstimate': mock_estimate
+    }), 200
+
+# --- End Photo Inspection Endpoint ---
+
+# --- NEW: Finance Analysis Endpoint ---
+def allowed_finance_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_FINANCE_EXTENSIONS
+
+@app.route('/api/analyze-finance', methods=['POST'])
+def analyze_finance_document():
+    if db is None:
+        return jsonify({'error': 'Server configuration error: Database unavailable.'}), 500
+        
+    # --- Authorization --- 
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Unauthorized'}), 401
+    token = auth_header.split('Bearer ')[1]
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'error': 'Invalid token'}), 401
+        
+    # --- File Handling ---
+    if 'financeFile' not in request.files:
+        return jsonify({'error': 'No finance file provided'}), 400
+        
+    file = request.files['financeFile']
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected for upload'}), 400
+        
+    if file and allowed_finance_file(file.filename):
+        print(f"Received finance document: {file.filename}")
+        
+        # --- Placeholder Analysis Logic ---
+        # In a real scenario:
+        # 1. Extract text/data (e.g., using PyPDF2 for PDF, OCR for images).
+        # 2. Pass extracted data to Gemini with a specific prompt for financial details.
+        # 3. Parse Gemini's response.
+        
+        # Mock extracted data based on filename hint
+        extracted_data = {
+            'fileName': file.filename,
+            'category': 'Utilities' if 'utility' in file.filename.lower() else 'Maintenance' if 'repair' in file.filename.lower() else 'Other',
+            'vendor': 'Mock Vendor Inc.',
+            'date': datetime.date.today().isoformat(),
+            'amount': 123.45,
+            'currency': 'USD',
+            'summary': 'Placeholder summary of the financial document.'
+        }
+        # --- End Placeholder Logic ---
+
+        return jsonify({
+            'success': True,
+            'extractedData': extracted_data
+        }), 200
+        
+    else:
+        return jsonify({'error': 'Invalid file type. Allowed: PDF, PNG, JPG, JPEG'}), 400
+        
+# --- End Finance Analysis Endpoint ---
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8081))
