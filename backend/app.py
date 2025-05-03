@@ -1346,7 +1346,7 @@ def analyze_finance_document():
             --- END --- 
             
             Output ONLY the JSON object.
-            """\"
+            """
             
             analysis_result_json = None
             # Iterate through API keys
