@@ -39,7 +39,8 @@ import {
   Check as CheckIcon,
   Star as StarIcon,
   Upgrade as UpgradeIcon,
-  Article as ArticleIcon
+  Article as ArticleIcon,
+  HomeWork as HomeWorkIcon
 } from '@mui/icons-material';
 import { collection, query, where, orderBy, getDocs, Timestamp, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
@@ -249,204 +250,232 @@ const Dashboard = ({ showSnackbar }) => {
     );
   }
 
+  // Determine Greeting
+  const currentHour = new Date().getHours();
+  let greeting = "Welcome";
+  if (currentHour < 12) {
+    greeting = "Good morning";
+  } else if (currentHour < 18) {
+    greeting = "Good afternoon";
+  } else {
+    greeting = "Good evening";
+  }
+  const userName = profile?.name || user?.displayName || 'there';
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {profile.subscriptionTier === 'free' && (
-         <Alert 
-            severity="info" 
-            action={
-               <Button 
-                 color="primary" 
-                 size="small" 
-                 onClick={() => navigate('/pricing')}
-                 startIcon={<UpgradeIcon />}
-               >
-                  Upgrade to Pro
-               </Button>
-            }
-            sx={{ mb: 3, '.MuiAlert-message': { width: '100%'} }}
-         >
-           You are on the Free Trial. 
-           <Typography variant="body2" component="span" sx={{ fontWeight: 'bold'}}>
-              {Math.max(0, 3 - (profile.freeScansUsed || 0))} analysis scans remaining.
-           </Typography>
-         </Alert>
-      )}
-
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          p: { xs: 2, md: 3 },
-          mb: 4, 
-          bgcolor: 'primary.lighter',
-          borderRadius: 2,
-          border: '1px solid', 
-          borderColor: 'divider'
-        }}
-      >
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm>
-            <Typography variant="h4" component="h1" gutterBottom>
-              Welcome, {user?.email || 'User'}! 
-            </Typography>
-          </Grid>
-          <Grid item xs={12} sm="auto" sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
-            <Button 
-              variant="contained" 
-              size="large"
-              startIcon={<Add />}
-              onClick={() => navigate('/analysis')}
-              sx={{ borderRadius: 8 }}
-            >
-              Analyze New Lease
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={4}>
-            <Card variant="outlined">
-                <CardContent>
-                    <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
-                       Total Analyses
+        {/* Welcome and Stats Section */}
+        <Paper elevation={0} sx={{ p: { xs: 2, md: 4 }, mb: 4, bgcolor: 'primary.lighter', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+            <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={8}>
+                    <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                        {greeting}, {userName}!
                     </Typography>
-                    <Typography variant="h5" component="div">
-                       {stats.totalAnalyses}
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                        Manage your lease analyses, review scores, and explore helpful tools.
                     </Typography>
-                </CardContent>
-            </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-             <Card variant="outlined">
-                <CardContent>
-                    <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
-                       Last Analysis
-                    </Typography>
-                    <Typography variant="h5" component="div">
-                       {formatLastAnalysisDate(stats.lastAnalysisDate)}
-                    </Typography>
-                </CardContent>
-            </Card>
-        </Grid>
-      </Grid>
+                </Grid>
+                <Grid item xs={12} md={4} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
+                    <Stack direction="row" spacing={2} justifyContent={{ xs: 'flex-start', md: 'flex-end' }} alignItems="center">
+                      <Box>
+                          <Typography variant="body2" color="text.secondary">Total Analyses</Typography>
+                          <Typography variant="h5" component="p" sx={{ fontWeight: 'medium' }}>{stats.totalAnalyses}</Typography>
+                      </Box>
+                      <Divider orientation="vertical" flexItem />
+                      <Box>
+                          <Typography variant="body2" color="text.secondary">Last Analysis</Typography>
+                          <Typography variant="h5" component="p" sx={{ fontWeight: 'medium' }}>{formatLastAnalysisDate(stats.lastAnalysisDate)}</Typography>
+                      </Box>
+                    </Stack>
+                </Grid>
+            </Grid>
+        </Paper>
 
-      <Paper variant="outlined" sx={{ p: 2, mb: 4, borderRadius: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h6" component="h2" gutterBottom>
-              From the Blog
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Tips on understanding leases, avoiding scams, and more.
-            </Typography>
-          </Box>
-          <Button 
-            variant="contained"
-            component={RouterLink} 
-            to="/blog"
-            startIcon={<ArticleIcon />}
-            size="small"
-          >
-            Read Blog
-          </Button>
-        </Box>
-      </Paper>
-
-      <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
-        My Lease Analyses
-      </Typography>
-      
-      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
-
-      {leases.length === 0 && !error && (
-         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
-             <Typography variant="h6" gutterBottom>No analyses yet!</Typography>
-             <Typography color="text.secondary" sx={{ mb: 2 }}>
-               Click "Analyze New Lease" to get started.
-             </Typography>
-             <Button 
-               variant="contained" 
-               startIcon={<Add />}
-               onClick={() => navigate('/analysis')}
-             >
-               Analyze New Lease
-             </Button>
-         </Paper>
-      )}
-      
-      {leases.length > 0 && (
-        <Grid container spacing={3}>
-          {leases.map((lease) => (
-            <Fade in timeout={500} key={lease.id}>
-              <Grid item xs={12} md={6} lg={4}>
-                <Card 
-                  variant="outlined"
-                  sx={{
-                    borderLeft: `4px solid ${lease.status === 'complete' ? getScoreColor(lease.analysis?.score) : 'grey.300'}`
-                  }}
-                >
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                       <Tooltip title={lease.fileName || 'No Filename'} placement="top-start">
-                         <Typography 
-                            variant="h6" 
-                            noWrap
-                            sx={{ fontWeight: 500, maxWidth: '80%' }}
-                         >
-                           {lease.fileName || 'Untitled Analysis'}
-                         </Typography>
-                       </Tooltip>
-                        {lease.status === 'complete' && lease.analysis?.score !== undefined && (
-                            <Tooltip title={`Risk Score: ${lease.analysis.score}/100`}>
-                               {getScoreSeverityChip(lease.analysis.score)}
-                            </Tooltip>
-                        )}
-                        {lease.status === 'error' && (
-                            <Tooltip title="Analysis encountered an error">
-                                <Chip icon={<Warning />} label="Error" color="error" size="small" />
-                            </Tooltip>
-                        )}
-                         {lease.status === 'pending' && (
-                            <Tooltip title="Analysis in progress...">
-                                 <Chip icon={<CircularProgress size={14}/>} label="Processing" color="info" size="small" />
-                            </Tooltip>
-                        )}
-                    </Box>
-                    
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {lease.createdAt instanceof Timestamp ? formatDistanceToNow(lease.createdAt.toDate(), { addSuffix: true }) : (lease.createdAt ? formatDistanceToNow(new Date(lease.createdAt), { addSuffix: true }) : 'Unknown date')}
-                      </Typography>
-                       {getStatusChip(lease.status)}
-                    </Box>
-                  </CardContent>
-                  <Divider />
-                  <CardActions sx={{ justifyContent: 'space-between' }}>
-                     <Tooltip title="Delete Analysis">
-                       <IconButton 
-                          size="small" 
-                          color="error"
-                          onClick={() => handleDeleteLease(lease.id)} 
-                       >
-                          <DeleteIcon fontSize="small" />
-                       </IconButton>
-                     </Tooltip>
-                    <Button 
-                      size="small" 
-                      variant="contained"
-                      onClick={() => navigate(`/analysis/${lease.id}`)}
-                      disabled={lease.status !== 'complete'}
-                    >
-                      View Analysis
-                    </Button>
-                  </CardActions>
+        {/* Quick Actions / Feature Highlight Grid */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+             {/* Lease Analysis Card */}
+            <Grid item xs={12} sm={6} md={4}>
+                <Card elevation={2} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-5px)' } }}>
+                    <CardContent sx={{ flexGrow: 1 }}>
+                        <Description sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
+                        <Typography variant="h6" component="h2" gutterBottom>New Lease Analysis</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Upload a lease document (PDF/TXT) or paste text to get an AI-powered breakdown of clauses, risks, and key terms.
+                        </Typography>
+                    </CardContent>
+                    <CardActions sx={{ justifyContent: 'flex-end' }}>
+                        <Button 
+                          variant="contained"
+                          startIcon={<Add />}
+                          onClick={() => navigate('/analysis')}
+                          sx={{ m: 1 }}
+                        >
+                            Analyze Lease
+                        </Button>
+                    </CardActions>
                 </Card>
-              </Grid>
-            </Fade>
-          ))}
+            </Grid>
+
+            {/* Add the NEW Real Estate Agent Feature Card HERE */}
+            <Grid item xs={12} sm={6} md={4}>
+                <Card elevation={2} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-5px)' } }}>
+                    <CardContent sx={{ flexGrow: 1 }}>
+                        <HomeWorkIcon sx={{ fontSize: 40, color: 'secondary.main', mb: 1 }} />
+                        <Typography variant="h6" component="h2" gutterBottom>Real Estate Agent Tool (Landlord)</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Upload property details or tenant preferences (files/text) to automatically identify matching criteria and streamline your tenant search.
+                        </Typography>
+                    </CardContent>
+                    <CardActions sx={{ justifyContent: 'flex-end' }}>
+                        <Button 
+                          variant="contained"
+                          color="secondary"
+                          startIcon={<Analytics />}
+                          onClick={() => navigate('/real-estate-agent')}
+                          sx={{ m: 1 }}
+                        >
+                            Analyze Preferences
+                        </Button>
+                    </CardActions>
+                </Card>
+            </Grid>
+
+            {/* Lease Calculator Card */}
+            <Grid item xs={12} sm={6} md={4}>
+                <Card elevation={2} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-5px)' } }}>
+                    <CardContent sx={{ flexGrow: 1 }}>
+                        <Calculate sx={{ fontSize: 40, color: 'success.main', mb: 1 }} />
+                        <Typography variant="h6" component="h2" gutterBottom>Lease Calculator</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Estimate potential costs, compare scenarios, and understand the financial implications of different lease terms.
+                        </Typography>
+                    </CardContent>
+                    <CardActions sx={{ justifyContent: 'flex-end' }}>
+                        <Button 
+                          variant="contained"
+                          color="success"
+                          startIcon={<Calculate />}
+                          onClick={() => navigate('/calculator')}
+                          sx={{ m: 1, color: 'white' }}
+                        >
+                            Use Calculator
+                        </Button>
+                    </CardActions>
+                </Card>
+            </Grid>
         </Grid>
-      )}
+
+        {/* Recent Analyses Section */}
+        <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 5, mb: 3 }}>
+            Recent Analyses
+        </Typography>
+
+        {/* ... rest of the component for displaying leases ... */}
+        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+         {leases.length === 0 && !loading && (
+          <Paper elevation={1} sx={{ p: 3, textAlign: 'center', bgcolor: 'grey.50' }}>
+            <InfoIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1 }} />
+            <Typography variant="h6" gutterBottom>No analyses yet!</Typography>
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+                Start by analyzing your first lease document.
+            </Typography>
+            <Button 
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => navigate('/analysis')}
+            >
+                Analyze First Lease
+            </Button>
+          </Paper>
+        )}
+
+        {leases.length > 0 && (
+            <Grid container spacing={3}>
+                {leases.map((lease) => (
+                    <Grid item xs={12} sm={6} md={4} key={lease.id}>
+                        <Fade in={true} timeout={500}>
+                            <Card 
+                                elevation={2} 
+                                sx={{ 
+                                    height: '100%', 
+                                    display: 'flex', 
+                                    flexDirection: 'column',
+                                    cursor: 'pointer',
+                                    transition: 'box-shadow 0.2s',
+                                    '&:hover': {
+                                        boxShadow: 6, // Increase shadow on hover
+                                    }
+                                }}
+                                onClick={() => navigate(`/analysis/${lease.id}`)}
+                            >
+                                <CardContent sx={{ flexGrow: 1 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                        <Typography variant="h6" component="h3" noWrap sx={{ maxWidth: '80%' }}>
+                                            {lease.fileName || lease.title || 'Untitled Analysis'}
+                                        </Typography>
+                                        {getStatusChip(lease.status)}
+                                    </Box>
+                                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                                        Analyzed: {lease.createdAt ? formatDistanceToNow(lease.createdAt.toDate(), { addSuffix: true }) : 'N/A'}
+                                    </Typography>
+                                    {lease.analysis?.score !== undefined && (
+                                        <Tooltip title={`Overall Score: ${lease.analysis.score}/100`}>
+                                            <Chip 
+                                              icon={<StarIcon />} 
+                                              label={`${lease.analysis.score}/100`} 
+                                              size="small" 
+                                              color={getScoreColor(lease.analysis.score)}
+                                              variant="outlined"
+                                              sx={{ mr: 1, mb: 1 }}
+                                            />
+                                        </Tooltip>
+                                    )}
+                                     {lease.analysis?.risks && lease.analysis.risks.length > 0 && (
+                                        <Tooltip title={`${lease.analysis.risks.length} Potential Risks Identified`}>
+                                           <Chip 
+                                              icon={<Warning />} 
+                                              label={`${lease.analysis.risks.length} Risks`} 
+                                              size="small" 
+                                              color="warning"
+                                              variant="outlined"
+                                              sx={{ mr: 1, mb: 1 }}
+                                            />
+                                        </Tooltip>
+                                    )}
+                                </CardContent>
+                                <CardActions sx={{ justifyContent: 'flex-end', pt: 0 }}>
+                                    <Tooltip title="Delete Analysis">
+                                        <span> {/* Span needed for disabled button tooltip */}
+                                            <IconButton 
+                                                size="small" 
+                                                color="error"
+                                                onClick={(e) => {
+                                                    e.stopPropagation(); // Prevent card click
+                                                    handleDeleteLease(lease.id);
+                                                }} 
+                                                // disabled={deletingId === lease.id} // If adding delete loading state
+                                            >
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                    <Button 
+                                        size="small" 
+                                        onClick={(e) => {
+                                            e.stopPropagation(); // Prevent card click
+                                            navigate(`/analysis/${lease.id}`)
+                                        }}
+                                    >
+                                        View Details
+                                    </Button>
+                                </CardActions>
+                            </Card>
+                        </Fade>
+                    </Grid>
+                ))}
+            </Grid>
+        )}
     </Container>
   );
 };

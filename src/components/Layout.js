@@ -32,7 +32,8 @@ import {
   Description, 
   Calculate, 
   FolderShared,
-  ChevronRight
+  ChevronRight,
+  HomeWork
 } from '@mui/icons-material';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
@@ -89,6 +90,7 @@ const Layout = ({ children, showAuthButtons = false }) => {
     { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
     { text: 'Lease Analysis', icon: <Description />, path: '/analysis' },
     { text: 'Lease Calculator', icon: <Calculate />, path: '/calculator' },
+    { text: 'Real Estate Agent (Landlord)', icon: <HomeWork />, path: '/real-estate-agent' },
   ];
 
   const drawer = (

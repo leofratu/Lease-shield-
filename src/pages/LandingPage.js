@@ -44,7 +44,8 @@ import {
   SchoolOutlined as StudentIcon,
   VerifiedUserOutlined as VerifiedIcon,
   UploadFileOutlined as UploadFileIcon,
-  Savings as SavingsIcon
+  Savings as SavingsIcon,
+  HomeWork as HomeWorkIcon
 } from '@mui/icons-material';
 
 const LandingPage = () => {
@@ -113,6 +114,11 @@ const LandingPage = () => {
       title: "Secure & Confidential",
       description: "Your lease documents are encrypted and securely processed. We prioritize your data privacy.",
       icon: <SecurityIcon sx={{ fontSize: 40 }} color="primary" />
+    },
+    {
+      title: "Landlord Tenant Matching",
+      description: "Landlords: Upload property details and tenant preferences (files or structured input) to let our AI help identify suitable tenant profiles based on your criteria.",
+      icon: <HomeWorkIcon sx={{ fontSize: 40 }} color="secondary" />
     }
   ];
 
@@ -433,39 +439,46 @@ const LandingPage = () => {
            Core Features
          </Typography>
          <Grid container spacing={3}>
-           {features.map((feature, index) => (
-             <Grid item xs={12} sm={6} md={3} key={index}>
-               <Zoom in={true} style={{ transitionDelay: `${150 * index + 300}ms` }}>
-                 <Card
-                   elevation={2}
-                   sx={{
-                     height: '100%',
-                     display: 'flex',
-                     flexDirection: 'column',
-                     borderRadius: 3,
-                     transition: theme.transitions.create(['transform', 'box-shadow'], {
-                        duration: theme.transitions.duration.short,
-                        easing: theme.transitions.easing.easeInOut,
-                     }),
-                     p: 2.5,
-                     '&:hover': {
-                       transform: 'translateY(-5px)',
-                       boxShadow: theme.shadows[6]
-                     }
-                   }}
-                 >
-                   <CardContent sx={{ flexGrow: 1, textAlign: 'center', p: 1 }}>
-                     <Box sx={{ mb: 2, color: theme.palette.primary.main }}>{feature.icon}</Box>
-                     <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 600 }}>{feature.title}</Typography>
-                     <Typography variant="body2" color="text.secondary">{feature.description}</Typography>
-                     {feature.title === "Secure & Confidential" && (
-                         <LockIcon fontSize="inherit" sx={{ color: 'text.disabled', verticalAlign: 'middle', ml: 0.5 }} />
-                      )} 
-                   </CardContent>
-                 </Card>
-               </Zoom>
-             </Grid>
-           ))}
+           {features.map((feature, index) => {
+             const isLandlordFeature = feature.title === "Landlord Tenant Matching";
+             return (
+               <Grid item xs={12} sm={6} md={isLandlordFeature ? 4 : 3} key={index}> { /* Optional: give it slightly more width */}
+                 <Zoom in={true} style={{ transitionDelay: `${150 * index + 300}ms` }}>
+                   <Card
+                     elevation={isLandlordFeature ? 3 : 2} // Slightly more elevation
+                     sx={{
+                       height: '100%',
+                       display: 'flex',
+                       flexDirection: 'column',
+                       borderRadius: 3,
+                       transition: theme.transitions.create(['transform', 'box-shadow', 'background-color'], {
+                          duration: theme.transitions.duration.short,
+                          easing: theme.transitions.easing.easeInOut,
+                       }),
+                       p: isLandlordFeature ? 3 : 2.5, // More padding
+                       bgcolor: isLandlordFeature ? 'secondary.lighter' : 'background.paper', // Different background
+                       border: isLandlordFeature ? `1px solid ${theme.palette.secondary.main}` : 'none', // Optional border
+                       '&:hover': {
+                         transform: 'translateY(-5px)',
+                         boxShadow: theme.shadows[6]
+                       }
+                     }}
+                   >
+                     <CardContent sx={{ flexGrow: 1, textAlign: 'center', p: 1 }}>
+                       <Box sx={{ mb: 2, color: isLandlordFeature ? theme.palette.secondary.main : theme.palette.primary.main }}>
+                         {React.cloneElement(feature.icon, { sx: { fontSize: isLandlordFeature ? 48 : 40 } })} { /* Larger Icon */}
+                       </Box>
+                       <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 600 }}>{feature.title}</Typography>
+                       <Typography variant="body2" color="text.secondary">{feature.description}</Typography>
+                       {feature.title === "Secure & Confidential" && (
+                           <LockIcon fontSize="inherit" sx={{ color: 'text.disabled', verticalAlign: 'middle', ml: 0.5 }} />
+                        )} 
+                     </CardContent>
+                   </Card>
+                 </Zoom>
+               </Grid>
+             );
+            })}
          </Grid>
        </Container>
 

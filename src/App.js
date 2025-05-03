@@ -27,6 +27,7 @@ import LeaseRedFlags from './pages/blog/LeaseRedFlags';
 import TenantRightsOverview from './pages/blog/TenantRightsOverview';
 import UsingLeaseShieldAIEffectively from './pages/blog/UsingLeaseShieldAIEffectively';
 import AdminPage from './pages/AdminPage';
+import RealEstateAgentPage from './pages/RealEstateAgentPage';
 
 // Create theme
 const theme = createTheme({
@@ -314,6 +315,13 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Profile />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/real-estate-agent" element={
+            <ProtectedRoute>
+              <Layout>
+                <RealEstateAgentPage />
               </Layout>
             </ProtectedRoute>
           } />
