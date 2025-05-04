@@ -508,8 +508,10 @@ const RealEstateAgentPage = () => {
             <Paper elevation={2} sx={{ p: 3, mt: 3 }}>
               <Typography variant="h6" gutterBottom>Analysis Results</Typography>
               <Typography component="pre" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', backgroundColor: '#f5f5f5', p: 2, borderRadius: 1 }}>
-                {/* Display structured results nicely later */}
-                {JSON.stringify(extractedInfo, null, 2)} 
+                {/* Check if it's an image summary or structured JSON */}
+                {typeof extractedInfo?.image_summary === 'string' 
+                  ? extractedInfo.image_summary 
+                  : JSON.stringify(extractedInfo, null, 2)}
               </Typography>
             </Paper>
           </Grid>
