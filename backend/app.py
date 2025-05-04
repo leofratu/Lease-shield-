@@ -1336,25 +1336,16 @@ def scan_expense_documents(): # Renamed function
                  raise ValueError('Unsupported file type for expense analysis. Use PDF, PNG, JPG, JPEG, WEBP, HEIC, HEIF.')
                  
             # --- Gemini Analysis --- 
-            # Construct Prompt (Focus on key details per document)
-            # TODO: Refine prompt if line item extraction is feasible/required
+            # Construct Prompt (More open-ended)
             prompt = f"""\\
-            Analyze the provided financial document ({'text content' if input_type == 'text' else 'image'}).
-            Extract the following information and format the output ONLY as a single JSON object.
+            Analyze the provided financial document ({'text content' if input_type == 'text' else 'image'}). 
+            Identify and extract all key financial details present, such as vendor/merchant name, date(s), total amount, currency, line items (with descriptions and amounts), subtotals, taxes, payment terms, invoice numbers, etc. 
+            
+            Format the output ONLY as a single JSON object containing the extracted information. Use descriptive keys for the data found. 
+            If specific details like line items are present, represent them accurately within the JSON.
+            If no relevant financial details can be reliably extracted, return an empty JSON object: {{}}
+            
             Do not include any text before or after the JSON object (e.g., no ```json markdown).
-            The JSON object must have a top-level key called 'extracted_data' containing these exact keys. Use null or "Not Found" if a value cannot be reasonably determined.
-            
-            -   `vendor`: The name of the vendor, merchant, or service provider.
-            -   `date`: The primary date on the document (e.g., invoice date, payment date) in YYYY-MM-DD format if possible, otherwise as found.
-            -   `total_amount`: The primary numerical total amount (e.g., 146.33). Extract only the number.
-            -   `currency`: The currency code (e.g., USD, EUR) or symbol (e.g., $).
-            -   `category`: Suggest a likely expense category (e.g., Utilities, Rent, Maintenance, Supplies, Travel, Food, Software, Other).
-            -   `summary`: A brief one-sentence summary of the item or service.
-            -   `items`: An array of line items if clearly identifiable. Each item should be an object with 'description' and 'amount'. If items aren't clear, return an empty array [].
-            -   `subtotal`: The subtotal amount, if available.
-            -   `tax`: The tax amount, if available.
-            
-            Example Output: {{"extracted_data": {{"vendor": "City Water Dept.", "date": "2023-10-26", "total_amount": 75.50, "currency": "USD", "category": "Utilities", "summary": "Monthly water bill payment.", "items": [], "subtotal": null, "tax": null}}}}
             
             Document Content:
             --- START --- 
@@ -1370,7 +1361,7 @@ def scan_expense_documents(): # Renamed function
                 try:
                     genai.configure(api_key=api_key)
                     # Use a model capable of vision if needed
-                    model_name = 'gemini-1.5-flash' # Or 'gemini-pro-vision' or 'gemini-1.5-pro' potentially
+                    model_name = 'gemini-1.5-pro' # Changed to Pro model for potentially better accuracy
                     model = genai.GenerativeModel(model_name) 
                     
                     # Send appropriate content type
