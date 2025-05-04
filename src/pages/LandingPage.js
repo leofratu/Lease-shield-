@@ -55,7 +55,8 @@ import {
   CameraAltOutlined as CameraAltIcon,
   BuildOutlined as BuildIcon,
   AnalyticsOutlined as AnalyticsIcon,
-  PersonSearch as PersonSearchIcon
+  PersonSearch as PersonSearchIcon,
+  Upcoming as UpcomingIcon
 } from '@mui/icons-material';
 
 const LandingPage = () => {
