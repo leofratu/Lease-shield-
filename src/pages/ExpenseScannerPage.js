@@ -66,17 +66,19 @@ const ExpenseScannerPage = () => {
   const [files, setFiles] = useState([]);
   
   // API/UI State
-  const [extractedData, setExtractedData] = useState(null); // Store extracted invoice details
+  const [extractedResults, setExtractedResults] = useState([]); // Renamed state, initialized as array
+  const [scanErrors, setScanErrors] = useState([]); // New state for errors from the API
   const [isScanning, setIsScanning] = useState(false); // Renamed from isLoading for clarity
   const [isSaving, setIsSaving] = useState(false); // State for ledger saving
-  const [error, setError] = useState('');
+  const [error, setError] = useState(''); // General UI errors (e.g., upload validation)
   const [successMessage, setSuccessMessage] = useState(''); // For success feedback
 
   // --- File Upload Logic (react-dropzone) ---
   const onDrop = useCallback((acceptedFiles, fileRejections) => {
     setError(''); 
     setSuccessMessage('');
-    setExtractedData(null);
+    setExtractedResults([]); // Reset results on new drop
+    setScanErrors([]); // Reset API errors on new drop
     
     const newFiles = acceptedFiles.map(file => Object.assign(file, {
         preview: URL.createObjectURL(file) // Create preview URL if needed (less relevant for non-images)
@@ -154,7 +156,8 @@ const ExpenseScannerPage = () => {
     setIsScanning(true); // Use specific state
     setError('');
     setSuccessMessage('');
-    setExtractedData(null);
+    setExtractedResults([]); // Clear previous results
+    setScanErrors([]); // Clear previous API errors
 
     try {
       // Optional: Get user token if API requires authentication
@@ -192,42 +195,59 @@ const ExpenseScannerPage = () => {
           body: formData,
       });
 
-      // const result = await fetchScannedData(formData, token); // Using placeholder for now
-
-       if (!response.ok) {
-           const errorText = await response.text(); // Get error text from backend if possible
-           throw new Error(errorText || `Request failed with status: ${response.status}`);
-       }
-      
        const result = await response.json(); // Assuming backend sends JSON
 
       // --- End IMPORTANT Section ---
 
-      if (!result.success || !result.extractedData) {
-          throw new Error(result.error || 'API did not return the expected scan data.');
+      // Updated check: Look for extractedDataList and handle API errors
+      if (!response.ok) { // Check response status first
+           throw new Error(result.error || result.message || `Scan request failed with status ${response.status}`);
       }
+      
+      // Store both successful results and any errors reported by the API
+      setExtractedResults(result.extractedDataList || []);
+      setScanErrors(result.errors || []);
 
-      setExtractedData(result.extractedData); // Store the successful result
+      if (result.extractedDataList && result.extractedDataList.length > 0) {
+           // Optionally set a success message if needed, maybe based on errors list?
+           if (result.errors && result.errors.length > 0) {
+               setSuccessMessage(`Scan partially successful. ${result.extractedDataList.length} item(s) extracted. See errors below.`);
+           } else {
+               setSuccessMessage(`Scan successful! ${result.extractedDataList.length} item(s) extracted.`);
+           }
+      } else if (result.errors && result.errors.length > 0) {
+          // Handle case where API call was ok, but all files failed processing
+          setError("Scan complete, but failed to extract data from any documents. See errors below.");
+      } else if (!result.extractedDataList || result.extractedDataList.length === 0) {
+          // Handle case where API is OK, returns success:true but empty list and no errors (unlikely but possible)
+          setError("Scan complete, but no data could be extracted.");
+      }
 
     } catch (apiError) {
       console.error("Error processing scan request:", apiError);
       setError(`Failed to process scan: ${apiError.message}`);
+      setExtractedResults([]); // Clear results on error
+      setScanErrors([]); // Clear errors on error
     } finally {
       setIsScanning(false); // Use specific state
     }
   };
   // --- End API Submission Logic ---
 
-  // --- Add to Ledger Logic (Placeholder) ---
+  // --- Add to Ledger Logic (Placeholder - Modified) ---
   const handleAddToLedger = async () => {
-      if (!extractedData) {
-          setError('No extracted data to save.');
+      // For now, this function might not be suitable for multiple results.
+      // We'll disable the button if there isn't exactly one successful result.
+      if (extractedResults.length !== 1 || scanErrors.length > 0) {
+          setError('Add to ledger requires exactly one successfully scanned item without errors.');
           return;
       }
+      const dataToSave = extractedResults[0]; // Get the single result
+
       setIsSaving(true);
       setError('');
       setSuccessMessage('');
-      console.log("Attempting to save to ledger:", extractedData);
+      console.log("Attempting to save to ledger:", dataToSave);
 
       try {
           // ** TODO: Implement actual API call to backend endpoint **
@@ -247,7 +267,8 @@ const ExpenseScannerPage = () => {
           setSuccessMessage('Expense successfully added to ledger!');
           console.log("Expense added to ledger (Simulated).");
           // Optionally clear the form/results after successful save
-          // setExtractedData(null);
+          // setExtractedResults([]);
+          // setScanErrors([]); 
           // setFiles([]); 
 
       } catch (saveError) {
@@ -356,20 +377,20 @@ const ExpenseScannerPage = () => {
                       <Typography sx={{ ml: 2 }}>Analyzing document...</Typography>
                   </Box>
               )}
-              {!isScanning && !extractedData && (
+              {!isScanning && extractedResults.length === 0 && (
                  <Typography color="text.secondary" sx={{ textAlign: 'center', minHeight: 150, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                      Scan results will appear here after processing.
                  </Typography>
               )}
-              {extractedData && (
+              {extractedResults.length > 0 && (
                  <Box>
                     {/* TODO: Consider adding Edit buttons here for user correction */}
-                    <Typography variant="subtitle1"><strong>Vendor:</strong> {extractedData.vendor || 'N/A'}</Typography>
-                    <Typography variant="subtitle1"><strong>Date:</strong> {extractedData.date || 'N/A'}</Typography>
-                    <Typography variant="subtitle1"><strong>Category Guess:</strong> {extractedData.category || 'N/A'}</Typography>
+                    <Typography variant="subtitle1"><strong>Vendor:</strong> {extractedResults[0].vendor || 'N/A'}</Typography>
+                    <Typography variant="subtitle1"><strong>Date:</strong> {extractedResults[0].date || 'N/A'}</Typography>
+                    <Typography variant="subtitle1"><strong>Category Guess:</strong> {extractedResults[0].category || 'N/A'}</Typography>
                     <Divider sx={{ my: 2 }} />
                     
-                    {extractedData.items && extractedData.items.length > 0 && (
+                    {extractedResults[0].items && extractedResults[0].items.length > 0 && (
                         <>
                          <Typography variant="subtitle2" sx={{ mb: 1 }}><strong>Line Items:</strong></Typography>
                          <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 200, overflowY: 'auto' }}>
@@ -382,7 +403,7 @@ const ExpenseScannerPage = () => {
                                      </TableRow>
                                  </TableHead>
                                  <TableBody>
-                                     {extractedData.items.map((item, index) => (
+                                     {extractedResults[0].items.map((item, index) => (
                                          <TableRow key={index}>
                                              <TableCell>{item.description}</TableCell>
                                              <TableCell align="right">${item.amount?.toFixed(2)}</TableCell>
@@ -396,11 +417,11 @@ const ExpenseScannerPage = () => {
                     )}
 
                      <Divider sx={{ my: 2 }} />
-                     <Typography variant="body1" align="right"><strong>Subtotal:</strong> ${extractedData.subtotal?.toFixed(2) || '0.00'}</Typography>
-                     <Typography variant="body1" align="right"><strong>Tax:</strong> ${extractedData.tax?.toFixed(2) || '0.00'}</Typography>
-                     <Typography variant="h6" align="right"><strong>Total:</strong> ${extractedData.total?.toFixed(2) || '0.00'}</Typography>
+                     <Typography variant="body1" align="right"><strong>Subtotal:</strong> ${extractedResults[0].subtotal?.toFixed(2) || '0.00'}</Typography>
+                     <Typography variant="body1" align="right"><strong>Tax:</strong> ${extractedResults[0].tax?.toFixed(2) || '0.00'}</Typography>
+                     <Typography variant="h6" align="right"><strong>Total:</strong> ${extractedResults[0].total?.toFixed(2) || '0.00'}</Typography>
                      {/* Add Payment Terms if extracted */}
-                     {extractedData.paymentTerms && <Typography variant="body2" align="right" sx={{ mt: 1 }}>Payment Terms: {extractedData.paymentTerms}</Typography>}
+                     {extractedResults[0].paymentTerms && <Typography variant="body2" align="right" sx={{ mt: 1 }}>Payment Terms: {extractedResults[0].paymentTerms}</Typography>}
 
                      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
                         <Button 
@@ -408,7 +429,7 @@ const ExpenseScannerPage = () => {
                            color="secondary" // Use secondary color 
                            size="small"
                            onClick={handleAddToLedger}
-                           disabled={isSaving || isScanning || !extractedData}
+                           disabled={isSaving || isScanning || extractedResults.length !== 1 || scanErrors.length > 0}
                            startIcon={isSaving ? <CircularProgress size={14} color="inherit" /> : null}
                         >
                             {isSaving ? 'Saving...' : 'Add to Ledger'}
@@ -419,7 +440,7 @@ const ExpenseScannerPage = () => {
            </Paper>
 
            {/* Real-time Dashboard Placeholder */}
-           <Paper elevation={2} sx={{ p: 3, opacity: extractedData ? 1 : 0.5 /* Fade out if no data */ }}>
+           <Paper elevation={2} sx={{ p: 3, opacity: extractedResults.length > 0 ? 1 : 0.5 /* Fade out if no data */ }}>
              <Typography variant="h6" gutterBottom>3. Real-time Expense Dashboard (Placeholder)</Typography>
              <Grid container spacing={3}>
                 <Grid item xs={12} sm={6}>
@@ -432,7 +453,7 @@ const ExpenseScannerPage = () => {
                        Visual showing expense trends over the last 6-12 months.
                    </Typography>
                     <Box sx={{ height: 150, bgcolor: 'grey.200', borderRadius: 1, display:'flex', alignItems:'center', justifyContent:'center', flexDirection: 'column' }}>
-                        <BarChartIcon color="disabled"/>
+                        <BarChartIcon color={extractedResults.length > 0 ? "primary" : "disabled"}/>
                         <Typography variant="caption" color="text.secondary">Monthly Expense Chart Area</Typography>
                     </Box>
                 </Grid>
@@ -446,7 +467,7 @@ const ExpenseScannerPage = () => {
                       Breakdown of spending by category (Repairs, Utilities, Taxes, etc.).
                    </Typography>
                    <Box sx={{ height: 150, bgcolor: 'grey.200', borderRadius: 1, display:'flex', alignItems:'center', justifyContent:'center', flexDirection: 'column' }}>
-                      <BarChartIcon color="disabled" />{/* <PieChartIcon color="disabled"/> */}
+                      <BarChartIcon color={extractedResults.length > 0 ? "secondary" : "disabled"} />{/* <PieChartIcon color="disabled"/> */}
                       <Typography variant="caption" color="text.secondary">Category Breakdown Chart Area</Typography>
                    </Box>
                 </Grid>
