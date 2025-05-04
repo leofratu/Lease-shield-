@@ -163,10 +163,20 @@ const RealEstateAgentPage = () => {
   // --- API Submission Logic ---
   const handleSubmit = async () => {
     // Basic validation (can be enhanced)
-    if (files.length === 0 && !structuredPreferences.notes?.trim() /* Check other fields if necessary */) {
-      setError('Please upload relevant property documents or specify key tenant preferences.');
+    const filesForAnalysis = files.filter(
+        file => file.type === 'application/pdf' || file.type === 'text/plain'
+    );
+
+    if (filesForAnalysis.length === 0 && !structuredPreferences.notes?.trim()) {
+      // Check if there are *any* files uploaded, even if not suitable for analysis
+      if (files.length > 0) {
+           setError('No PDF or TXT file found for analysis. Please upload a supported document or add preferences/notes. Other uploaded files are saved but not analyzed.');
+      } else {
+           setError('Please upload a relevant property document (PDF/TXT) or specify key tenant preferences.');
+      }
       return;
     }
+
     setIsLoading(true);
     setError('');
     setExtractedInfo('');
@@ -179,19 +189,20 @@ const RealEstateAgentPage = () => {
       const token = await user.getIdToken();
 
       const formData = new FormData();
-      
-      // Append structured preferences as a JSON string
-      // formData.append('tenantPreferences', JSON.stringify(structuredPreferences)); // <-- Temporarily comment this out for testing
 
-      // Append files - Change key to 'leaseFile' and potentially only send one?
-      // Note: /api/analyze likely only processes the *first* file named 'leaseFile'
-      if (files.length > 0) {
-          formData.append('leaseFile', files[0], files[0].name); // Use 'leaseFile' key
-      } 
-      // else if (!structuredPreferences.notes?.trim()) {
-      //    // Optional: Add check if submitting without files AND without notes is invalid
-      //    throw new Error('Please upload a document or provide notes.');
-      // }
+      // Append structured preferences as a JSON string - KEEPING THIS COMMENTED FOR NOW
+      // formData.append('tenantPreferences', JSON.stringify(structuredPreferences)); 
+
+      // Append the *first* suitable file (PDF or TXT) for analysis
+      if (filesForAnalysis.length > 0) {
+          const fileToAnalyze = filesForAnalysis[0];
+          formData.append('leaseFile', fileToAnalyze, fileToAnalyze.name); // Use 'leaseFile' key
+          console.log(`Appending ${fileToAnalyze.name} (${fileToAnalyze.type}) for analysis.`);
+      } else if (!structuredPreferences.notes?.trim()) {
+         // This case should theoretically be caught by the initial check, but added for safety
+         throw new Error('No suitable document (PDF/TXT) uploaded for analysis and no preferences notes provided.');
+      }
+      // Note: Other uploaded files (images, docx) are kept in the 'files' state but not sent to /api/analyze
 
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
       console.log('API URL:', apiUrl); // Log the URL being used
@@ -446,7 +457,7 @@ const RealEstateAgentPage = () => {
                disabled={isLoading || files.length === 0} // Disable if loading or no files
                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
              >
-               {isLoading ? 'Analyzing...' : 'Analyze & Match Tenant Profile'}
+               {isLoading ? 'Analyzing...' : (files.length > 0 ? 'Analyze Document & Match' : 'Save Preferences')}
              </Button>
            </Box>
         </Grid>
