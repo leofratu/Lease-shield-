@@ -54,7 +54,8 @@ import {
   ReceiptLongOutlined as ReceiptLongIcon,
   CameraAltOutlined as CameraAltIcon,
   BuildOutlined as BuildIcon,
-  AnalyticsOutlined as AnalyticsIcon
+  AnalyticsOutlined as AnalyticsIcon,
+  PersonSearch as PersonSearchIcon
 } from '@mui/icons-material';
 
 const LandingPage = () => {
@@ -195,7 +196,7 @@ const LandingPage = () => {
     {
       title: "Trend Analysis",
       description: "Track market trends in rental terms and conditions to gain negotiating leverage",
-      icon: <AutoGraphIcon />
+      icon: <AutoGraphIcon sx={{ color: theme.palette.primary.main }} />
     },
   ];
 
@@ -689,7 +690,7 @@ const LandingPage = () => {
                    <List dense sx={{ mb: 4 }}>
                      {[
                         { text: "AI extracts key dates, clauses & escalation schedules", icon: <CheckIcon color="primary" /> },
-                        { text: "Risk flags for unusual or unfavorable terms", icon: <CheckIcon color="primary" /> },
+                        { text: "Risk flags for unusual or unfavorable terms", icon: <WarningIcon color="warning" /> },
                         { text: "Download plain-language summary report", icon: <CheckIcon color="primary" /> }
                      ].map((item, index) => (
                         <ListItem key={index} disableGutters>
