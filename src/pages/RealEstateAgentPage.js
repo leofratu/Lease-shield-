@@ -183,10 +183,15 @@ const RealEstateAgentPage = () => {
       // Append structured preferences as a JSON string
       formData.append('tenantPreferences', JSON.stringify(structuredPreferences));
 
-      // Append files
-      files.forEach((file) => {
-        formData.append('documents', file, file.name);
-      });
+      // Append files - Change key to 'leaseFile' and potentially only send one?
+      // Note: /api/analyze likely only processes the *first* file named 'leaseFile'
+      if (files.length > 0) {
+          formData.append('leaseFile', files[0], files[0].name); // Use 'leaseFile' key
+      } 
+      // else if (!structuredPreferences.notes?.trim()) {
+      //    // Optional: Add check if submitting without files AND without notes is invalid
+      //    throw new Error('Please upload a document or provide notes.');
+      // }
 
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
       console.log('API URL:', apiUrl); // Log the URL being used
