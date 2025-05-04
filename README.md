@@ -92,4 +92,4 @@ gcloud run deploy --image gcr.io/lease-shield-ai/backend --platform managed
 - API keys are stored securely as environment variables
 - Firebase security rules restrict access to user-specific data
 - PDFs are stored securely in Firebase Storage
-- Authentication required for all API endpoints 
+- Authentication required for all API endpoints
