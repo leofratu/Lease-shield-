@@ -162,19 +162,30 @@ const RealEstateAgentPage = () => {
 
   // --- API Submission Logic ---
   const handleSubmit = async () => {
-    // Basic validation (can be enhanced)
-    const filesForAnalysis = files.filter(
+    // Identify files for different analysis types
+    const filesForTextAnalysis = files.filter(
         file => file.type === 'application/pdf' || file.type === 'text/plain'
     );
+    const filesForImageAnalysis = files.filter(
+        file => file.type === 'image/jpeg' || file.type === 'image/png'
+    );
 
-    if (filesForAnalysis.length === 0 && !structuredPreferences.notes?.trim()) {
-      // Check if there are *any* files uploaded, even if not suitable for analysis
-      if (files.length > 0) {
-           setError('No PDF or TXT file found for analysis. Please upload a supported document or add preferences/notes. Other uploaded files are saved but not analyzed.');
-      } else {
-           setError('Please upload a relevant property document (PDF/TXT) or specify key tenant preferences.');
-      }
-      return;
+    // Determine primary file type for submission
+    let analysisType = 'none';
+    let fileToSubmit = null;
+
+    if (filesForTextAnalysis.length > 0) {
+        analysisType = 'text';
+        fileToSubmit = filesForTextAnalysis[0];
+    } else if (filesForImageAnalysis.length > 0) {
+        analysisType = 'image';
+        fileToSubmit = filesForImageAnalysis[0];
+    }
+
+    // Basic validation
+    if (analysisType === 'none' && !structuredPreferences.notes?.trim()) {
+        setError('Please upload a relevant property document (PDF/TXT), an image (JPG/PNG), or specify key tenant preferences.');
+        return;
     }
 
     setIsLoading(true);
@@ -182,62 +193,92 @@ const RealEstateAgentPage = () => {
     setExtractedInfo('');
 
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error('User not authenticated. Please log in.');
-      }
-      const token = await user.getIdToken();
+        const user = auth.currentUser;
+        if (!user) {
+            throw new Error('User not authenticated. Please log in.');
+        }
+        const token = await user.getIdToken();
 
-      const formData = new FormData();
+        const formData = new FormData();
 
-      // Append structured preferences as a JSON string - KEEPING THIS COMMENTED FOR NOW
-      // formData.append('tenantPreferences', JSON.stringify(structuredPreferences)); 
+        // Append structured preferences (optional, but good practice if backend uses them)
+        // formData.append('tenantPreferences', JSON.stringify(structuredPreferences));
 
-      // Append the *first* suitable file (PDF or TXT) for analysis
-      if (filesForAnalysis.length > 0) {
-          const fileToAnalyze = filesForAnalysis[0];
-          formData.append('leaseFile', fileToAnalyze, fileToAnalyze.name); // Use 'leaseFile' key
-          console.log(`Appending ${fileToAnalyze.name} (${fileToAnalyze.type}) for analysis.`);
-      } else if (!structuredPreferences.notes?.trim()) {
-         // This case should theoretically be caught by the initial check, but added for safety
-         throw new Error('No suitable document (PDF/TXT) uploaded for analysis and no preferences notes provided.');
-      }
-      // Note: Other uploaded files (images, docx) are kept in the 'files' state but not sent to /api/analyze
+        let endpoint = '';
+        let fileKey = '';
 
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
-      console.log('API URL:', apiUrl); // Log the URL being used
-      const response = await fetch(`${apiUrl}/api/analyze`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
+        if (analysisType === 'text') {
+            endpoint = '/api/analyze';
+            fileKey = 'leaseFile'; // Key expected by the text analysis endpoint
+            formData.append(fileKey, fileToSubmit, fileToSubmit.name);
+            console.log(`Appending ${fileToSubmit.name} (${fileToSubmit.type}) for TEXT analysis.`);
+        } else if (analysisType === 'image') {
+            endpoint = '/api/analyze-image'; // Hypothetical endpoint for image analysis
+            fileKey = 'imageFile'; // Choose a key for the image endpoint, e.g., 'imageFile'
+            formData.append(fileKey, fileToSubmit, fileToSubmit.name);
+            console.log(`Appending ${fileToSubmit.name} (${fileToSubmit.type}) for IMAGE analysis.`);
+        } else {
+            // Handle case where only preferences are submitted (if supported by backend)
+            // For now, we assume an endpoint is needed if isLoading is true
+            // Or, perhaps call a different endpoint like '/api/save-preferences'
+            console.log("Submitting preferences only (no file analysis).");
+             // If you have a dedicated endpoint for saving preferences without files:
+             // endpoint = '/api/save-preferences';
+             // Or adjust logic if submitting without files isn't intended to hit an API here.
+             // Let's assume for now we only proceed if there's a file to analyze:
+             if (!fileToSubmit) {
+                 // Example: Save preferences locally or call a specific preferences endpoint
+                 // For demo, let's just stop loading and show success message (needs backend alignment)
+                 console.log("Simulating preference save without backend call.");
+                 setExtractedInfo("Preferences noted (no document/image analyzed)."); // Placeholder feedback
+                 setIsLoading(false);
+                 return; // Exit early if only preferences and no dedicated endpoint call needed here
+             }
+        }
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ 
-             error: `Request failed with status: ${response.status}` 
-        }));
-        throw new Error(errorData.error || 'Failed to process request');
-      }
+        if (!endpoint) {
+             // Should not happen if logic above is correct, but safety check
+              throw new Error("Could not determine the correct API endpoint.");
+        }
 
-      const result = await response.json();
 
-      if (!result.success || !result.extractedInfo) {
-          throw new Error(result.error || 'API did not return the expected information.');
-      }
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
+        console.log(`Calling API URL: ${apiUrl}${endpoint}`);
+        const response = await fetch(`${apiUrl}${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                // Content-Type is set automatically by browser for FormData
+            },
+            body: formData,
+        });
 
-      setExtractedInfo(result.extractedInfo); 
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({
+                error: `Request failed with status: ${response.status}`
+            }));
+            // Try to get more specific error from backend if available
+            const backendError = errorData.error || errorData.message || `Request failed with status: ${response.status}`;
+            throw new Error(backendError);
+        }
+
+        const result = await response.json();
+
+        if (!result.success || !result.extractedInfo) {
+            throw new Error(result.error || 'API did not return the expected information.');
+        }
+
+        setExtractedInfo(result.extractedInfo);
 
     } catch (apiError) {
-      console.error("Error processing request:", apiError);
-      if (apiError.message.includes('User not authenticated')) {
-           setError('Authentication error. Please log in again.');
-      } else {
-           setError(`Failed to process the request: ${apiError.message}`);
-      }
+        console.error("Error processing request:", apiError);
+        if (apiError.message.includes('User not authenticated')) {
+            setError('Authentication error. Please log in again.');
+        } else {
+            setError(`Failed to process the request: ${apiError.message}`);
+        }
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   };
   // --- End API Submission Logic ---
@@ -454,10 +495,10 @@ const RealEstateAgentPage = () => {
                color="primary"
                size="large"
                onClick={handleSubmit}
-               disabled={isLoading || files.length === 0} // Disable if loading or no files
+               disabled={isLoading || (files.length === 0 && !structuredPreferences.notes?.trim())} // Disable if loading or nothing to submit
                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
              >
-               {isLoading ? 'Analyzing...' : (files.length > 0 ? 'Analyze Document & Match' : 'Save Preferences')}
+               {isLoading ? 'Processing...' : (files.length > 0 ? 'Analyze Document/Image' : 'Save Preferences')}
              </Button>
            </Box>
         </Grid>

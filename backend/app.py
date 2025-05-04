@@ -1577,6 +1577,200 @@ def calculate_lease_costs():
         return jsonify({'error': 'An unexpected error occurred during calculation.'}), 500
 # --- End Lease Calculator Endpoint ---
 
+# --- Reusable Gemini Model Initialization ---
+# Store initialized models to potentially reuse them and cycle keys
+gemini_models = {}
+current_key_index = 0
+
+def get_gemini_model(model_name="gemini-1.5-pro"):
+    global current_key_index
+    global gemini_models
+    global gemini_api_keys
+
+    if not gemini_api_keys:
+        raise ValueError("No Gemini API keys configured.")
+
+    # Cycle through keys
+    key_to_use = gemini_api_keys[current_key_index]
+    current_key_index = (current_key_index + 1) % len(gemini_api_keys)
+    
+    # Simple way to reuse a configured model instance per key, per model type
+    model_key_id = f"{model_name}_{current_key_index}"
+
+    if model_key_id not in gemini_models:
+        print(f"Initializing Gemini model {model_name} with key index {current_key_index}")
+        genai.configure(api_key=key_to_use)
+        # Add safety settings if desired
+        safety_settings = [
+            {
+                "category": "HARM_CATEGORY_DANGEROUS",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE",
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE",
+            },
+        ]
+        model = genai.GenerativeModel(model_name, safety_settings=safety_settings)
+        gemini_models[model_key_id] = model
+        
+    return gemini_models[model_key_id]
+
+# --- Analyze Image with Gemini ---
+def analyze_image(image_file_storage):
+    """Analyzes an uploaded image file using Gemini 1.5 Pro."""
+    if not Image:
+         raise ImportError("Pillow library is required for image analysis.")
+         
+    try:
+        # Verify it's an image using Pillow
+        img = Image.open(image_file_storage) 
+        img.verify() # Verify image data integrity
+        # Important: Re-open after verify as verify() consumes the stream pointer for some formats
+        image_file_storage.seek(0) 
+        img = Image.open(image_file_storage)
+
+        # Prepare image data for Gemini API
+        image_parts = [
+            {
+                "mime_type": img.get_format_mimetype() or mimetypes.guess_type(image_file_storage.filename)[0], # Get MIME type
+                "data": image_file_storage.read() # Read bytes
+            }
+        ]
+        
+        # Define the prompt for image analysis (adjust as needed)
+        prompt = [
+             "Analyze the following image, which is related to a real estate property or rental listing. ",
+             "Describe the key features visible in the image relevant to a potential tenant or landlord. ",
+             "Focus on aspects like room type, condition, amenities shown, style, potential issues, or unique selling points. ",
+             "Provide a concise summary.",
+             image_parts[0] # Embed the image data directly in the prompt list
+        ]
+
+        # Get the Gemini 1.5 Pro model (using the key rotation logic)
+        model = get_gemini_model(model_name="gemini-1.5-pro") # Explicitly use 1.5 Pro
+
+        # Generate content
+        print(f"Sending image ({image_parts[0]['mime_type']}) to Gemini 1.5 Pro for analysis...")
+        response = model.generate_content(prompt)
+
+        # Check for response and valid text part
+        if response and response.parts:
+             # Assuming the response structure contains text in parts
+             # Corrected line: Ensure the join method has a valid string to join elements
+             full_text = "".join(part.text for part in response.parts if hasattr(part, 'text')) 
+             if full_text:
+                 print("Gemini image analysis successful.")
+                 # Try to parse as JSON if the prompt requested it, otherwise return text
+                 # For now, just returning the text description.
+                 # Modify prompt and this section if structured JSON output is desired.
+                 return full_text 
+             else:
+                 # Handle cases where response exists but has no text (e.g., safety block)
+                 print(f"Gemini response missing text. Block reason: {response.prompt_feedback.block_reason if response.prompt_feedback else 'Unknown'}")
+                 raise ValueError("Analysis blocked or failed to generate text.")
+        else:
+            # Handle empty or invalid response object
+            print("Gemini returned an empty or invalid response.")
+            raise ValueError("Failed to get a valid response from the analysis model.")
+
+    except (genai.types.BlockedPromptException, genai.types.StopCandidateException) as safety_error:
+         print(f"Gemini safety block during image analysis: {safety_error}")
+         raise ValueError(f"Analysis blocked due to safety settings: {safety_error}")
+    except Exception as e:
+        print(f"Error during image analysis: {e}")
+        # Log the specific error type and message
+        print(f"Error type: {type(e).__name__}, Message: {str(e)}")
+        raise # Re-raise the exception to be caught by the route handler
+
+# --- New Route for Image Analysis ---
+@app.route('/api/analyze-image', methods=['POST'])
+def analyze_image_route():
+    if db is None:
+         return jsonify({"error": "Database not initialized. Cannot process request."}), 503
+
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({'error': 'Unauthorized: Missing or invalid token'}), 401
+
+    token = auth_header.split('Bearer ')[1]
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({'error': 'Invalid or expired token'}), 401
+
+    # Check if user can perform scans
+    user_profile = get_or_create_user_profile(user_id)
+    if not user_profile:
+         return jsonify({'error': 'Failed to retrieve user profile'}), 500
+         
+    # Basic scan check (can be refined based on image vs document)
+    # For now, treat image analysis as consuming a 'scan' like documents
+    if user_profile.get('scans_remaining', 0) <= 0 and user_profile.get('tier', 'free') != 'commercial':
+         return jsonify({
+             'error': 'No scans remaining. Please upgrade your plan or wait for reset.',
+             'scans_remaining': 0,
+             'tier': user_profile.get('tier', 'free')
+         }), 402 # Payment Required
+
+    if 'imageFile' not in request.files:
+        return jsonify({'error': 'No image file found in the request'}), 400
+
+    file = request.files['imageFile']
+
+    if file.filename == '':
+        return jsonify({'error': 'No selected image file'}), 400
+
+    # Optional: Add more robust file validation (e.g., size, allowed extensions)
+    # filename = secure_filename(file.filename) # Consider if needed
+    # if not allowed_image_file(filename): # Assumes allowed_image_file exists
+    #    return jsonify({'error': 'Invalid image file type'}), 400
+
+    try:
+        # Perform the analysis using the helper function
+        analysis_result_text = analyze_image(file)
+
+        # Decrement scan count after successful analysis
+        increment_scan_counts(user_id, user_profile.get('tier', 'free'), scan_type='image_analysis') # Specify scan type
+
+        # Return the result in the same format as /api/analyze for consistency
+        # Currently returning text, wrap it in the expected structure
+        return jsonify({
+            "success": True, 
+            "extractedInfo": {
+                 "image_summary": analysis_result_text # Put text result here
+            } 
+            # Add other fields if the prompt is adjusted for structured JSON
+        })
+
+    except ImportError as e:
+         print(f"ImportError in /api/analyze-image: {e}")
+         return jsonify({'error': f'Server configuration error: {e}'}), 500
+    except ValueError as e: # Catch specific errors from analyze_image
+        print(f"ValueError in /api/analyze-image: {e}")
+        return jsonify({'error': f'Analysis Error: {e}'}), 400 # Bad Request or specific error
+    except GoogleAPIError as e: # Catch Google API specific errors (rate limits, auth)
+         print(f"GoogleAPIError in /api/analyze-image: {e}")
+         # Provide a more generic error to the user
+         return jsonify({'error': 'Failed to communicate with the analysis service. Please try again later.'}), 503 # Service Unavailable
+    except Exception as e:
+        print(f"Unexpected error in /api/analyze-image: {e}")
+        # Log the full traceback for debugging if possible
+        import traceback
+        traceback.print_exc() 
+        return jsonify({'error': 'An unexpected server error occurred during image analysis.'}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8081))
     app.run(host='0.0.0.0', port=port, debug=True) # Added debug=True for development 
