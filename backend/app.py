@@ -45,7 +45,7 @@ gemini_api_keys = [
         os.environ.get('GEMINI_API_KEY') 
     ] if key
 ]
-
+#this is for the gemini api key
 if not gemini_api_keys:
     print("CRITICAL ERROR: No Gemini API keys found in environment variables (GEMINI_API_KEY_1, _2, _3, or GEMINI_API_KEY).")
     # Depending on policy, you might exit or let it fail later.
@@ -1707,6 +1707,7 @@ def analyze_image_route():
     if db is None:
          return jsonify({"error": "Database not initialized. Cannot process request."}), 503
 
+    # --- Authorization & Subscription Check (Copied & Adapted from /api/analyze) ---
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
         return jsonify({'error': 'Unauthorized: Missing or invalid token'}), 401
@@ -1716,19 +1717,82 @@ def analyze_image_route():
     if not user_id:
         return jsonify({'error': 'Invalid or expired token'}), 401
 
-    # Check if user can perform scans
     user_profile = get_or_create_user_profile(user_id)
     if not user_profile:
-         return jsonify({'error': 'Failed to retrieve user profile'}), 500
-         
-    # Basic scan check (can be refined based on image vs document)
-    # For now, treat image analysis as consuming a 'scan' like documents
-    if user_profile.get('scans_remaining', 0) <= 0 and user_profile.get('tier', 'free') != 'commercial':
-         return jsonify({
-             'error': 'No scans remaining. Please upgrade your plan or wait for reset.',
-             'scans_remaining': 0,
-             'tier': user_profile.get('tier', 'free')
-         }), 402 # Payment Required
+         return jsonify({'error': 'Could not retrieve or create user profile.'}), 500
+
+    can_analyze = False
+    should_increment = False # Unified flag
+    tier = user_profile.get('subscriptionTier')
+    
+    # Get current scan counts
+    monthly_scans_used = user_profile.get('freeScansUsed', 0)
+    daily_scans_used = user_profile.get('dailyScansUsed', 0)
+    last_scan_date = user_profile.get('lastScanDate')
+    today_str = datetime.date.today().isoformat()
+
+    # Check if daily count needs reset (for premium tier check)
+    if tier == 'premium' and last_scan_date != today_str:
+        current_daily_for_check = 0 # Treat as 0 for limit check if date is old
+    else:
+        current_daily_for_check = daily_scans_used
+
+    # --- Tier Logic --- 
+    if tier == 'pro': # New Pro tier
+        can_analyze = True
+        should_increment = False # Unlimited
+        print(f"User {user_id} (Pro) - Image Analysis Access granted (Unlimited)")
+    elif tier == 'paid': # Keep existing paid tier logic (assuming unlimited)
+        can_analyze = True
+        should_increment = False
+        print(f"User {user_id} (Paid) - Image Analysis Access granted (Unlimited)")
+    elif tier == 'premium': # New Premium tier
+        max_monthly_scans = 50 # Defined limit
+        max_daily_scans = 3 # Defined limit
+        # Check monthly limit
+        if monthly_scans_used < max_monthly_scans:
+            # Check daily limit
+            if current_daily_for_check < max_daily_scans:
+                can_analyze = True
+                should_increment = True # Increment both monthly and daily
+                print(f"User {user_id} (Premium) - Image Analysis Access granted (Monthly: {monthly_scans_used}/{max_monthly_scans}, Daily: {current_daily_for_check}/{max_daily_scans})")
+            else:
+                print(f"User {user_id} (Premium) Daily image scan limit reached ({current_daily_for_check}/{max_daily_scans})")
+                return jsonify({'error': f'Daily analysis limit ({max_daily_scans}) reached for Premium plan.', 'limitReached': 'daily'}), 429 # Too Many Requests
+        else:
+             print(f"User {user_id} (Premium) Monthly image scan limit reached ({monthly_scans_used}/{max_monthly_scans})")
+             return jsonify({'error': f'Monthly analysis limit ({max_monthly_scans}) reached for Premium plan. Upgrade or wait until next cycle.', 'limitReached': 'monthly'}), 429 # Too Many Requests
+    elif tier == 'commercial':
+        max_scans = user_profile.get('maxAllowedScans', 0)
+        if max_scans <= 0:
+            print(f"User {user_id} (Commercial) has max scans set to {max_scans}. Denying image analysis access.")
+            return jsonify({'error': 'Commercial plan has no scans allowed. Contact admin.', 'upgradeRequired': False}), 403
+        if monthly_scans_used < max_scans:
+            can_analyze = True
+            should_increment = True # Increment monthly count
+            print(f"User {user_id} (Commercial) - Image Analysis Access granted ({monthly_scans_used}/{max_scans})")
+        else:
+            print(f"User {user_id} (Commercial) image scan limit reached ({monthly_scans_used}/{max_scans}).")
+            return jsonify({'error': f'Commercial scan limit reached ({monthly_scans_used}/{max_scans} used). Contact admin for more.', 'limitReached': 'monthly'}), 429
+    elif tier == 'free':
+        free_limit = 3
+        if monthly_scans_used < free_limit:
+            can_analyze = True
+            should_increment = True # Increment monthly count
+            print(f"User {user_id} (Free) - Image Analysis Access granted ({monthly_scans_used}/{free_limit})")
+        else:
+             print(f"User {user_id} (Free) image scan limit reached ({monthly_scans_used}/{free_limit}).")
+             return jsonify({'error': 'Free analysis limit reached. Please upgrade.', 'upgradeRequired': True, 'limitReached': 'monthly'}), 429
+    else:
+        # Unknown subscription tier
+        print(f"User {user_id} has unknown subscription tier for image analysis: {tier}")
+        return jsonify({'error': 'Invalid subscription status.'}), 403
+        
+    if not can_analyze:
+         # Fallback denial
+         print(f"User {user_id} (Tier: {tier}) - Image Analysis Access denied (Fallback check)")
+         return jsonify({'error': 'Analysis not permitted with current subscription.'}), 403
+    # --- End Authorization & Subscription Check ---
 
     if 'imageFile' not in request.files:
         return jsonify({'error': 'No image file found in the request'}), 400
@@ -1747,8 +1811,14 @@ def analyze_image_route():
         # Perform the analysis using the helper function
         analysis_result_text = analyze_image(file)
 
-        # Decrement scan count after successful analysis
-        increment_scan_counts(user_id, user_profile.get('tier', 'free'), scan_type='image_analysis') # Specify scan type
+        # --- Increment scan counts if needed (Corrected Call) ---
+        if should_increment:
+            # Use the new function and pass the tier
+            if not increment_scan_counts(user_id, tier):
+                 # Log error but proceed - analysis was done, just count failed
+                 print(f"CRITICAL: Failed to increment scan counts for user {user_id} (tier: {tier}) after successful image analysis.")
+                 # Consider adding to a retry queue or alert system
+        # --- End Increment ---
 
         # Return the result in the same format as /api/analyze for consistency
         # Currently returning text, wrap it in the expected structure
