@@ -1370,7 +1370,7 @@ def scan_expense_documents(): # Renamed function
                 try:
                     genai.configure(api_key=api_key)
                     # Use a model capable of vision if needed
-                    model_name = 'gemini-1.5-pro' # Changed to Pro model for potentially better accuracy
+                    model_name = 'gemini-2.5-flash-preview-04-17' # Changed model to match inspect-photos
                     model = genai.GenerativeModel(model_name) 
                     
                     # Send appropriate content type
