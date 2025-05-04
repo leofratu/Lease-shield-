@@ -1,0 +1,23 @@
+match /leases/{leaseId} {
+  allow read, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+  allow create, update: if false;
+}
+
+// Allow logged-in users to read and delete their own inspection documents.
+// Deny client-side creation/update - backend handles these.
+match /inspections/{inspectionId} {
+  allow read, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+  allow create, update: if false;
+}
+
+// Allow logged-in users to read and delete their own expense documents.
+// Deny client-side creation/update - backend handles these.
+match /expenses/{expenseId} {
+  allow read, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+  allow create, update: if false;
+}
+
+// Deny all client access to checkout sessions (only backend needs this).
+match /checkout_sessions/{orderId} {
+  allow read, write: if false;
+} 

@@ -16,14 +16,18 @@ import {
   List,
   ListItem,
   ListItemText,
-  Divider
+  Divider,
+  Button
 } from '@mui/material';
 import { 
     Dashboard as DashboardIcon,
     Description as DescriptionIcon, // Lease
     CameraAlt as CameraAltIcon, // Inspection
-    ReceiptLong as ReceiptLongIcon // Expense
+    ReceiptLong as ReceiptLongIcon, // Expense
+    Calculate as CalculateIcon, // Calculator
+    PersonSearch as PersonSearchIcon // Tenant Matcher
 } from '@mui/icons-material';
+import { Link } from 'react-router-dom';
 
 const DashboardPage = () => {
   const { user } = useAuthState(); // Get user from your auth hook
@@ -138,6 +142,50 @@ const DashboardPage = () => {
       </Typography>
 
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+      {/* Action Buttons */}
+      <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        <Button 
+          variant="contained" 
+          component={Link} 
+          to="/analysis" 
+          startIcon={<DescriptionIcon />}
+        >
+          Analyze New Lease
+        </Button>
+        <Button 
+          variant="contained" 
+          component={Link} 
+          to="/photo-inspection" 
+          startIcon={<CameraAltIcon />}
+        >
+          Start New Inspection
+        </Button>
+        <Button 
+          variant="contained" 
+          component={Link} 
+          to="/expense-scanner" 
+          startIcon={<ReceiptLongIcon />}
+        >
+          Scan New Expense
+        </Button>
+        <Button 
+          variant="contained" 
+          component={Link} 
+          to="/calculator" 
+          startIcon={<CalculateIcon />}
+        >
+          Lease Calculator
+        </Button>
+        <Button 
+          variant="contained" 
+          component={Link} 
+          to="/tenant-matcher"
+          startIcon={<PersonSearchIcon />}
+        >
+          Tenant Matcher
+        </Button>
+      </Box>
 
       <Grid container spacing={3}>
         {/* Leases Card */}
