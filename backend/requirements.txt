@@ -1,7 +1,7 @@
 Flask==2.2.2
 PyMuPDF==1.23.7
 python-dotenv==0.21.0
-Firebase-Admin-SDK==6.1.0
+firebase-admin==6.1.0 
 Flask-Cors==3.0.10
 gunicorn==20.1.0
 requests==2.28.1
@@ -9,3 +9,6 @@ Werkzeug==2.2.2
 google-cloud-storage==2.5.0
 pillow==9.3.0 # Added for image processing
 google-generativeai==0.5.4 # Added for Gemini API
+PyPDF2
+
+#this is for the pdf processing
