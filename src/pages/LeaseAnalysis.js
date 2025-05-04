@@ -1125,7 +1125,8 @@ const LeaseAnalysis = ({ showSnackbar }) => {
    }
 
    // Save the PDF
-   const fileName = lease?.fileName ? `LeaseAnalysis_${lease.fileName.split('.')[0]}.pdf` : 'LeaseAnalysisReport.pdf';
+   const currentLease = lease || (analysisResult ? { fileName: analysisResult.fileName } : {}); // Get lease info from state or analysisResult
+   const fileName = currentLease?.fileName ? `LeaseAnalysis_${currentLease.fileName.split('.')[0]}.pdf` : 'LeaseAnalysisReport.pdf';
    doc.save(fileName);
    displaySuccess('PDF report generated successfully!');
  };
