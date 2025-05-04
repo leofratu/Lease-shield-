@@ -1336,12 +1336,15 @@ def scan_expense_documents(): # Renamed function
                  raise ValueError('Unsupported file type for expense analysis. Use PDF, PNG, JPG, JPEG, WEBP, HEIC, HEIF.')
                  
             # --- Gemini Analysis --- 
-            # Construct Prompt (More open-ended)
+            # Construct Prompt (Open-ended but emphasizing total amount)
             prompt = f"""\\
             Analyze the provided financial document ({'text content' if input_type == 'text' else 'image'}). 
-            Identify and extract all key financial details present, such as vendor/merchant name, date(s), total amount, currency, line items (with descriptions and amounts), subtotals, taxes, payment terms, invoice numbers, etc. 
+            Identify and extract all key financial details present, such as vendor/merchant name, date(s), currency, line items (with descriptions and amounts), subtotals, taxes, payment terms, invoice numbers, etc. 
             
-            Format the output ONLY as a single JSON object containing the extracted information. Use descriptive keys for the data found. 
+            **Crucially, you MUST identify and extract the main numerical total amount (e.g., Total Due, Amount Paid, Balance).** 
+            Extract only the numerical value. If possible, use the key `total_amount` for this value in the output JSON.
+            
+            Format the output ONLY as a single JSON object containing all the extracted information. Use descriptive keys for the data found. 
             If specific details like line items are present, represent them accurately within the JSON.
             If no relevant financial details can be reliably extracted, return an empty JSON object: {{}}
             
