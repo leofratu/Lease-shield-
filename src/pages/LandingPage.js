@@ -667,14 +667,13 @@ const LandingPage = () => {
       <Box id="lease-analysis-detail" sx={{ py: { xs: 6, md: 10 }, bgcolor: theme.palette.mode === 'light' ? theme.palette.grey[50] : theme.palette.grey[900] }}>
         <Container maxWidth="lg">
           <Grid container spacing={6} alignItems="center">
-             {/* Image/Mockup Placeholder (Left Side) */}
+             {/* Image/Mockup Placeholder (Left Side) - Now using an icon */}
             <Grid item xs={12} md={6}>
               <Zoom in={true} timeout={500}>
-                <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', height: { xs: 250, sm: 350, md: 400 }, bgcolor: 'grey.200' }}>
-                  {/* Replace with actual screenshot or graphic */}
-                  <DescriptionIcon sx={{ fontSize: { xs: 100, md: 150 }, color: 'grey.500' }} />
-                  {/* <img src="/path/to/lease-analysis-mockup.png" alt="Lease Analysis Mockup" style={{ width: '100%', height: 'auto', display: 'block' }} /> */}
-                </Paper>
+                 {/* Use an Icon instead of a blank Paper */}
+                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: { xs: 250, sm: 350, md: 400 } }}>
+                     <DescriptionIcon color="primary" sx={{ fontSize: { xs: 150, md: 200 }, opacity: 0.6 }} />
+                 </Box>
               </Zoom>
             </Grid>
             {/* Text Content (Right Side) */}
@@ -689,9 +688,11 @@ const LandingPage = () => {
                    </Typography>
                    <List dense sx={{ mb: 4 }}>
                      {[
+                        // Use specific icons as requested
                         { text: "AI extracts key dates, clauses & escalation schedules", icon: <CheckIcon color="primary" /> },
                         { text: "Risk flags for unusual or unfavorable terms", icon: <WarningIcon color="warning" /> },
-                        { text: "Download plain-language summary report", icon: <CheckIcon color="primary" /> }
+                        // Assuming DownloadIcon is imported or available, otherwise use another like ArticleOutlinedIcon
+                        { text: "Download plain-language summary report", icon: <ArticleOutlinedIcon color="action" /> } 
                      ].map((item, index) => (
                         <ListItem key={index} disableGutters>
                            <ListItemIcon sx={{ minWidth: 35 }}>{item.icon}</ListItemIcon>
@@ -733,9 +734,10 @@ const LandingPage = () => {
                    </Typography>
                    <List dense sx={{ mb: 4 }}>
                      {[
+                        // Use specific icons as requested
                         { text: "Match criteria from uploaded profiles or structured inputs", icon: <CheckIcon color="primary" /> },
-                        { text: "Data-driven suitability score & recommendations", icon: <CheckIcon color="primary" /> },
-                        { text: "Automate outreach & track applicant status (Coming Soon!)", icon: <CheckIcon color="disabled" /> } // Indicate future feature
+                        { text: "Data-driven suitability score & recommendations", icon: <AnalyticsIcon color="primary" /> }, // Using AnalyticsIcon
+                        { text: "Automate outreach & track applicant status (Coming Soon!)", icon: <UpcomingIcon color="disabled" /> } // Assuming UpcomingIcon or similar
                      ].map((item, index) => (
                         <ListItem key={index} disableGutters>
                            <ListItemIcon sx={{ minWidth: 35 }}>{item.icon}</ListItemIcon>
@@ -756,14 +758,13 @@ const LandingPage = () => {
                  </Box>
                </Fade>
             </Grid>
-            {/* Image/Mockup Placeholder (Right Side) */}
+            {/* Image/Mockup Placeholder (Right Side) - Now using an icon */}
             <Grid item xs={12} md={6}>
               <Zoom in={true} timeout={500}>
-                <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', height: { xs: 250, sm: 350, md: 400 }, bgcolor: 'grey.200' }}>
-                  {/* Replace with actual screenshot or graphic */}
-                  <HomeWorkIcon sx={{ fontSize: { xs: 100, md: 150 }, color: 'grey.500' }} />
-                  {/* <img src="/path/to/tenant-matcher-mockup.png" alt="Tenant Matcher Mockup" style={{ width: '100%', height: 'auto', display: 'block' }} /> */}
-                </Paper>
+                 {/* Use an Icon instead of a blank Paper */}
+                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: { xs: 250, sm: 350, md: 400 } }}>
+                     <PersonSearchIcon color="secondary" sx={{ fontSize: { xs: 150, md: 200 }, opacity: 0.6 }} />
+                 </Box>
               </Zoom>
             </Grid>
           </Grid>
