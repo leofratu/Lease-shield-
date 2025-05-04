@@ -181,7 +181,7 @@ const RealEstateAgentPage = () => {
       const formData = new FormData();
       
       // Append structured preferences as a JSON string
-      formData.append('tenantPreferences', JSON.stringify(structuredPreferences));
+      // formData.append('tenantPreferences', JSON.stringify(structuredPreferences)); // <-- Temporarily comment this out for testing
 
       // Append files - Change key to 'leaseFile' and potentially only send one?
       // Note: /api/analyze likely only processes the *first* file named 'leaseFile'
