@@ -1641,18 +1641,27 @@ def analyze_image(image_file_storage):
          raise ImportError("Pillow library is required for image analysis.")
          
     try:
-        # Verify it's an image using Pillow
-        img = Image.open(image_file_storage) 
-        img.verify() # Verify image data integrity
-        # Important: Re-open after verify as verify() consumes the stream pointer for some formats
-        image_file_storage.seek(0) 
-        img = Image.open(image_file_storage)
+        # Read image bytes ONCE
+        image_bytes = image_file_storage.read()
+        
+        # Use BytesIO for Pillow operations without affecting original bytes
+        with io.BytesIO(image_bytes) as image_stream:
+            img = Image.open(image_stream) 
+            img.verify() # Verify image data integrity
+            
+            # Get MIME type after verification
+            # We might need to reopen from the stream after verify
+            image_stream.seek(0) 
+            img = Image.open(image_stream) # Re-open to get metadata like format
+            mime_type = img.get_format_mimetype() or mimetypes.guess_type(image_file_storage.filename)[0]
+            if not mime_type:
+                 raise ValueError("Could not determine image MIME type.")
 
-        # Prepare image data for Gemini API
+        # Prepare image data for Gemini API using the originally read bytes
         image_parts = [
             {
-                "mime_type": img.get_format_mimetype() or mimetypes.guess_type(image_file_storage.filename)[0], # Get MIME type
-                "data": image_file_storage.read() # Read bytes
+                "mime_type": mime_type, 
+                "data": image_bytes # Use the original bytes
             }
         ]
         
