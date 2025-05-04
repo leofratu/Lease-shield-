@@ -54,10 +54,16 @@ if not gemini_api_keys:
 app = Flask(__name__)
 
 # Configure CORS explicitly
-CORS(app, origins=[
-    "https://lease-shield-frontend.onrender.com", # Your deployed frontend
-    "http://localhost:3000" # For local development
-], supports_credentials=True)
+CORS(app, 
+     origins=[
+         "https://lease-shield-frontend.onrender.com", 
+         "http://localhost:3000"
+     ], 
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], # Explicitly allow methods
+     headers=["Content-Type", "Authorization"],       # Explicitly allow headers
+     supports_credentials=True,
+     # expose_headers=["Content-Length"] # Optional: Add if frontend needs specific headers
+)
 
 # --- Initialize Firebase Admin SDK (Handles Local and Deployed) ---
 db = None # Initialize db to None
