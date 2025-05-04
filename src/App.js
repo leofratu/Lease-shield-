@@ -7,6 +7,8 @@ import { useUserProfile } from './context/UserProfileContext';
 import ReactGA from 'react-ga4';
 import { UserProfileProvider } from './context/UserProfileContext';
 import { Box } from '@mui/material';
+import Header from './components/Header';
+import Footer from './components/Footer';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 
