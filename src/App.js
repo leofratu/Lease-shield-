@@ -83,7 +83,7 @@ const theme = createTheme({
 });
 
 // Updated Protected route component
-const ProtectedRoute = ({ children, requirePaid = false }) => {
+const ProtectedRoute = ({ children, requirePaid = false, requireAdmin = false }) => {
   const { user, loading: authLoading } = useAuthState();
   const location = useLocation();
 
@@ -91,7 +91,7 @@ const ProtectedRoute = ({ children, requirePaid = false }) => {
   const { profile, loadingProfile } = useUserProfile() || { profile: null, loadingProfile: true }; 
 
   // Log initial state
-  console.log(`ProtectedRoute (${location.pathname}): Start. AuthLoading=${authLoading}, ProfileLoading=${loadingProfile}, User? ${!!user}, RequirePaid=${requirePaid}`);
+  console.log(`ProtectedRoute (${location.pathname}): Start. AuthLoading=${authLoading}, ProfileLoading=${loadingProfile}, User? ${!!user}, RequirePaid=${requirePaid}, RequireAdmin=${requireAdmin}`);
 
   // 1. Wait for Firebase Auth initialization
   if (authLoading) {
@@ -105,7 +105,15 @@ const ProtectedRoute = ({ children, requirePaid = false }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // 3. If requirePaid is true, handle profile loading and tier check
+  // 3. Check if requireAdmin is true and user email matches
+  if (requireAdmin && user.email !== 'leofratu@gmail.com') {
+    console.log(`ProtectedRoute (${location.pathname}): Admin check failed (User: ${user.email}). Redirecting to /dashboard.`);
+    // Redirect non-admins away, perhaps to the main dashboard or home
+    return <Navigate to="/dashboard" replace />; 
+  }
+  console.log(`ProtectedRoute (${location.pathname}): Admin check passed or not required.`);
+
+  // 4. If requirePaid is true, handle profile loading and tier check
   if (requirePaid) {
       console.log(`ProtectedRoute (${location.pathname}): Paid route check. ProfileLoading=${loadingProfile}, Tier=${profile?.subscriptionTier}`);
       // Wait for profile if it's still loading
@@ -121,7 +129,7 @@ const ProtectedRoute = ({ children, requirePaid = false }) => {
       console.log(`ProtectedRoute (${location.pathname}): Paid route check passed.`);
   }
 
-  // 4. If we reach here, access is granted
+  // 5. If we reach here, access is granted
   console.log(`ProtectedRoute (${location.pathname}): Access granted. Rendering children (User: ${user.uid}).`);
   return children;
 };
@@ -291,7 +299,7 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/analysis" element={
-              <ProtectedRoute>
+              <ProtectedRoute requirePaid={true}>
                 <Layout>
                   <LeaseAnalysis />
                 </Layout>
@@ -349,7 +357,7 @@ function App() {
 
             {/* Admin Route - Protected by login, authorization checked inside AdminPage */}
             <Route path="/admin" element={
-              <ProtectedRoute>
+              <ProtectedRoute requireAdmin={true}>
                 <Layout>
                   <AdminPage />
                 </Layout>

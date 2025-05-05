@@ -210,8 +210,8 @@ const LandingPage = () => {
     { feature: "Handles Long Documents (~700 pages)", traditional: false, leaseShield: true },
     { feature: "AI Specialized for Leases", traditional: false, leaseShield: true },
     { feature: "Multilanguage Support", traditional: false, leaseShield: true },
-    { feature: "Response Time", traditional: "Days to Weeks", leaseShield: "Minutes" },
-    { feature: "Cost", traditional: "$200-500/hr", leaseShield: "Subscription" }
+    { feature: "Response Time", traditional: "Days to Weeks", leaseShield: "30-60 seconds" },
+    { feature: "Cost", traditional: "$200-500/hr", leaseShield: "Less then 5$ with unlimited scans" }
   ];
 
   // --- Button Click Handler ---
@@ -453,7 +453,7 @@ const LandingPage = () => {
                        justifyContent: 'center' 
                      }}
                    >
-                      <DescriptionIcon sx={{ fontSize: { xs: 100, md: 150 }, color: 'white', opacity: 0.8 }} />
+                      <DescriptionIcon aria-hidden="true" sx={{ fontSize: { xs: 100, md: 150 }, color: 'white', opacity: 0.8 }} />
                    </Box>
                  </Zoom>
               </Grid>
@@ -487,7 +487,9 @@ const LandingPage = () => {
                     <Box sx={{ p: 2, pt: 0, textAlign: 'center' }}>
                        <Button 
                          size="small" 
-                         href={module.link}
+                         href={module.link.startsWith('#') ? module.link : undefined}
+                         component={!module.link.startsWith('#') ? RouterLink : undefined}
+                         to={!module.link.startsWith('#') ? module.link : undefined}
                          sx={{ textTransform: 'none' }}
                        >
                          Learn More
@@ -673,7 +675,7 @@ const LandingPage = () => {
               <Zoom in={true} timeout={500}>
                  {/* Use an Icon instead of a blank Paper */}
                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: { xs: 250, sm: 350, md: 400 } }}>
-                     <DescriptionIcon color="primary" sx={{ fontSize: { xs: 150, md: 200 }, opacity: 0.6 }} />
+                     <DescriptionIcon aria-hidden="true" color="primary" sx={{ fontSize: { xs: 150, md: 200 }, opacity: 0.6 }} />
                  </Box>
               </Zoom>
             </Grid>
@@ -764,7 +766,7 @@ const LandingPage = () => {
               <Zoom in={true} timeout={500}>
                  {/* Use an Icon instead of a blank Paper */}
                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: { xs: 250, sm: 350, md: 400 } }}>
-                     <PersonSearchIcon color="secondary" sx={{ fontSize: { xs: 150, md: 200 }, opacity: 0.6 }} />
+                     <PersonSearchIcon aria-hidden="true" color="secondary" sx={{ fontSize: { xs: 150, md: 200 }, opacity: 0.6 }} />
                  </Box>
               </Zoom>
             </Grid>
@@ -897,7 +899,7 @@ const LandingPage = () => {
             <Grid item xs={12} md={5} sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', justifyContent: 'center' }}>
                <Zoom in={true} style={{ transitionDelay: '500ms' }}>
                  <Box sx={{ textAlign: 'center' }}>
-                    <CompareIcon sx={{ fontSize: 180, color: 'primary.light', opacity: 0.8 }} />
+                    <CompareIcon aria-hidden="true" sx={{ fontSize: 180, color: 'primary.light', opacity: 0.8 }} />
                  </Box>
                </Zoom>
             </Grid>
@@ -1140,6 +1142,20 @@ const LandingPage = () => {
           ))}
         </Stack>
       </Container>
+
+      {/* --- Admin Login Button --- */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
+          <Button 
+              component={RouterLink} 
+              to="/admin" 
+              size="small" 
+              variant="text"
+              color="inherit" // Use subtle color
+          >
+              Admin Access
+          </Button>
+      </Box>
+      {/* --- End Admin Login Button --- */}
 
       {/* --- Footer Update --- */}
       <Container maxWidth="lg" sx={{ py: 3, borderTop: `1px solid ${theme.palette.divider}` }}>
