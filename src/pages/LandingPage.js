@@ -138,35 +138,6 @@ const LandingPage = () => {
     }
   ];
 
-  // Features data (Kept for reference or potential reuse, but coreModules is now primary for the main feature grid)
-  const legacyFeatures = [
-    {
-      title: "Specialized AI Analysis",
-      description: "Our AI, powered by Google Gemini, is specifically trained on legal lease documents to extract key information and identify potential issues with high accuracy.",
-      icon: <PsychologyIcon sx={{ fontSize: 40 }} color="primary" />
-    },
-    {
-      title: "Plain Language Summaries",
-      description: "Complex legal clauses translated into everyday language you can understand, explaining what they mean for you.",
-      icon: <GavelIcon sx={{ fontSize: 40 }} color="primary" />
-    },
-    {
-      title: "Risk Detection",
-      description: "Automatically flags unusual, ambiguous, or potentially unfavorable terms in your agreement, helping you negotiate better.",
-      icon: <WarningIcon sx={{ fontSize: 40 }} color="primary" />
-    },
-    {
-      title: "Secure & Confidential",
-      description: "Your lease documents are encrypted and securely processed. We prioritize your data privacy.",
-      icon: <SecurityIcon sx={{ fontSize: 40 }} color="primary" />
-    },
-    {
-      title: "Landlord Tenant Matching",
-      description: "Landlords: Upload property details and tenant preferences (files or structured input) to let our AI help identify suitable tenant profiles based on your criteria.",
-      icon: <HomeWorkIcon sx={{ fontSize: 40 }} color="secondary" />
-    }
-  ];
-
   // Advanced features
   const advancedFeatures = [
     {
@@ -508,7 +479,14 @@ const LandingPage = () => {
                          href={module.link.startsWith('#') ? module.link : undefined}
                          component={!module.link.startsWith('#') ? RouterLink : undefined}
                          to={!module.link.startsWith('#') ? module.link : undefined}
-                         sx={{ textTransform: 'none' }}
+                         sx={{
+                           textTransform: 'none',
+                           transition: theme.transitions.create(['background-color', 'transform'], { duration: theme.transitions.duration.short }),
+                           '&:hover': {
+                             backgroundColor: theme.palette.action.hover,
+                             transform: 'scale(1.05)'
+                           }
+                         }}
                        >
                          Learn More
                        </Button>
@@ -566,7 +544,15 @@ const LandingPage = () => {
                       size="large"
                       component={RouterLink}
                       to="/real-estate-agent" // Link to the relevant page
-                      sx={{ mt: 3 }}
+                      sx={{
+                        mt: 3,
+                        transition: theme.transitions.create(['background-color', 'transform', 'box-shadow'], { duration: theme.transitions.duration.short }),
+                        '&:hover': {
+                          backgroundColor: theme.palette.primary.dark,
+                          transform: 'scale(1.03)',
+                          boxShadow: theme.shadows[4]
+                        }
+                      }}
                     >
                       Try Landlord Portal
                     </Button>
@@ -726,7 +712,15 @@ const LandingPage = () => {
                       color="primary"
                       size="large"
                       onClick={handleGetStartedClick} // Or navigate('/analysis') etc.
-                      sx={{ borderRadius: '25px', px: 4, py: 1.5 }}
+                      sx={{
+                        borderRadius: '25px', px: 4, py: 1.5,
+                        transition: theme.transitions.create(['background-color', 'transform', 'box-shadow'], { duration: theme.transitions.duration.short }),
+                        '&:hover': {
+                          backgroundColor: theme.palette.primary.dark,
+                          transform: 'scale(1.03)',
+                          boxShadow: theme.shadows[4]
+                        }
+                      }}
                     >
                       Analyze a Lease Now
                     </Button>
@@ -772,7 +766,15 @@ const LandingPage = () => {
                       size="large"
                       component={RouterLink}
                       to="/real-estate-agent" // Link to the relevant portal/page
-                      sx={{ borderRadius: '25px', px: 4, py: 1.5 }}
+                      sx={{
+                        borderRadius: '25px', px: 4, py: 1.5,
+                        transition: theme.transitions.create(['background-color', 'transform', 'box-shadow'], { duration: theme.transitions.duration.short }),
+                        '&:hover': {
+                          backgroundColor: theme.palette.primary.dark,
+                          transform: 'scale(1.03)',
+                          boxShadow: theme.shadows[4]
+                        }
+                      }}
                     >
                       Explore Tenant Matching
                     </Button>
@@ -946,14 +948,15 @@ const LandingPage = () => {
                     alignItems: 'flex-start',
                     borderRadius: 3,
                     height: '100%',
-                    transition: theme.transitions.create(['border-color', 'box-shadow'], {
+                    transition: theme.transitions.create(['border-color', 'box-shadow', 'background-color'], {
                         duration: theme.transitions.duration.short,
                         easing: theme.transitions.easing.easeInOut,
                     }),
                     borderColor: theme.palette.divider,
                     '&:hover': {
                       borderColor: theme.palette.primary.main,
-                      boxShadow: theme.shadows[2]
+                      boxShadow: theme.shadows[2],
+                      backgroundColor: theme.palette.action.hover
                     }
                   }}
                 >
@@ -1063,13 +1066,14 @@ const LandingPage = () => {
                     borderRadius: 3,
                     borderColor: theme.palette.divider,
                     p: 3,
-                    transition: theme.transitions.create(['border-color', 'box-shadow'], {
+                    transition: theme.transitions.create(['border-color', 'box-shadow', 'background-color'], {
                       duration: theme.transitions.duration.short,
                       easing: theme.transitions.easing.easeInOut,
                     }),
                     '&:hover': {
                       borderColor: theme.palette.secondary.light,
-                      boxShadow: theme.shadows[2]
+                      boxShadow: theme.shadows[2],
+                      backgroundColor: theme.palette.action.hover
                     }
                   }}
                 >
