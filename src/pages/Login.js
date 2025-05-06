@@ -10,7 +10,8 @@ import {
   Grid, 
   Link,
   Paper,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
@@ -108,10 +109,10 @@ const Login = () => {
             type="submit"
             fullWidth
             variant="contained"
-            sx={{ mt: 3, mb: 2 }}
+            sx={{ mt: 3, mb: 2, position: 'relative' }}
             disabled={loading}
           >
-            Sign In
+            {loading ? <CircularProgress size={24} sx={{ color: 'white', position: 'absolute', top: '50%', left: '50%', marginTop: '-12px', marginLeft: '-12px' }} /> : 'Sign In'}
           </Button>
           
           <Button
@@ -119,9 +120,9 @@ const Login = () => {
             variant="outlined"
             onClick={handleGoogleLogin}
             disabled={loading}
-            sx={{ mb: 2 }}
+            sx={{ mb: 2, position: 'relative' }}
           >
-            Sign In with Google
+            {loading ? <CircularProgress size={24} sx={{ position: 'absolute', top: '50%', left: '50%', marginTop: '-12px', marginLeft: '-12px' }} /> : 'Sign In with Google'}
           </Button>
           
           <Grid container justifyContent="flex-end">

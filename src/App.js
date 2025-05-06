@@ -6,7 +6,7 @@ import { useAuthState } from './hooks/useAuthState';
 import { useUserProfile } from './context/UserProfileContext';
 import ReactGA from 'react-ga4';
 import { UserProfileProvider } from './context/UserProfileContext';
-import { Box } from '@mui/material';
+import { Box, CircularProgress } from '@mui/material';
 import Alert from '@mui/material/Alert';
 
 // Pages
@@ -96,7 +96,12 @@ const ProtectedRoute = ({ children, requirePaid = false, requireAdmin = false })
   // 1. Wait for Firebase Auth initialization
   if (authLoading) {
     console.log(`ProtectedRoute (${location.pathname}): Auth loading...`);
-    return <div className="flex justify-center items-center min-h-screen"><p>Authenticating...</p></div>;
+    // Use CircularProgress for loading state
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   // 2. Check if user is logged in (Auth is initialized now)
@@ -119,7 +124,12 @@ const ProtectedRoute = ({ children, requirePaid = false, requireAdmin = false })
       // Wait for profile if it's still loading
       if (loadingProfile) {
          console.log(`ProtectedRoute (${location.pathname}): Paid route, profile loading...`);
-         return <div className="flex justify-center items-center min-h-screen"><p>Loading User Profile...</p></div>;
+         // Use CircularProgress for loading state
+         return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+              <CircularProgress />
+            </Box>
+         );
       }
       // Profile loaded, check tier
       if (!profile || profile.subscriptionTier !== 'paid') {
@@ -143,7 +153,12 @@ const TrialRouteHandler = () => {
 
   if (authLoading || loadingProfile) {
     console.log("TrialRouteHandler: Waiting for auth/profile...");
-    return <div className="flex justify-center items-center min-h-screen"><p>Loading...</p></div>; // Show loading while checking state
+    // Use CircularProgress for loading state
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   // Redirect away only if user has a paid ('pro') or 'commercial' plan

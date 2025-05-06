@@ -443,17 +443,35 @@ const LandingPage = () => {
               </Grid>
               <Grid item xs={12} md={6} sx={{ textAlign: 'center', position: 'relative' }}>
                  <Zoom in={true} style={{ transitionDelay: '300ms' }}>
-                   <Box 
-                     sx={{ 
-                       bgcolor: 'rgba(255, 255, 255, 0.1)', 
-                       height: { xs: 250, sm: 350, md: 400 }, 
+                   <Box
+                     sx={{
+                       bgcolor: 'rgba(255, 255, 255, 0.1)',
+                       height: { xs: 250, sm: 350, md: 400 },
                        borderRadius: '20px',
-                       display: 'flex', 
-                       alignItems: 'center', 
-                       justifyContent: 'center' 
+                       display: 'flex',
+                       alignItems: 'center',
+                       justifyContent: 'center',
+                       overflow: 'hidden', // Ensure video stays within bounds
                      }}
                    >
-                      <DescriptionIcon aria-hidden="true" sx={{ fontSize: { xs: 100, md: 150 }, color: 'white', opacity: 0.8 }} />
+                     {/* Replace Icon with Video */}
+                     <video
+                       width="100%"
+                       height="100%"
+                       controls // Add controls for user interaction
+                       autoPlay // Autoplay the video
+                       muted // Mute by default for autoplay
+                       loop // Loop the video
+                       playsInline // Important for mobile playback
+                       style={{ objectFit: 'cover', borderRadius: '20px' }} // Cover the area, keep border radius
+                       aria-label="Product launch video"
+                     >
+                       <source src="/Product Launch Video.mp4" type="video/mp4" />
+                       Your browser does not support the video tag.
+                       {/* Optional: Add track for captions/subtitles */}
+                       {/* <track kind="captions" src="/path/to/captions.vtt" srcLang="en" label="English" /> */}
+                     </video>
+                     {/* <DescriptionIcon aria-hidden="true" sx={{ fontSize: { xs: 100, md: 150 }, color: 'white', opacity: 0.8 }} /> */}
                    </Box>
                  </Zoom>
               </Grid>
